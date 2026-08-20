@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bundestagswahl · Wahlprognosen Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+:root{
+  --bg:#070a10;
+  --panel:#0f1420;
+  --panel2:#131a29;
+  --border:#212c40;
+  --border2:#2b3a54;
+  --text:#e7ecf3;
+  --muted:#8b96a8;
+  --faint:#5c6778;
+  --accent:#4f8cff;
+  --gold:#f0b429;
+  --ok:#34d399;
+  --bad:#f87171;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(79,140,255,.14), transparent 60%),
+    radial-gradient(900px 500px at -10% 20%, rgba(240,180,41,.08), transparent 55%),
+    radial-gradient(800px 500px at 50% 110%, rgba(227,0,15,.07), transparent 60%),
+    var(--bg);
+  min-height:100vh;
+  line-height:1.5;
+}
+.wrap{max-width:1440px;margin:0 auto;padding:0 28px 80px}
+
+/* ---------- Header ---------- */
+.flag{height:5px;display:flex}
+.flag span{flex:1}
+.flag .s1{background:#000}
+.flag .s2{background:#DD0000}
+.flag .s3{background:#FFCE00}
+header{padding:34px 0 26px;border-bottom:1px solid var(--border);margin-bottom:30px;position:relative}
+.overline{letter-spacing:.32em;font-size:12px;color:var(--gold);font-weight:600;text-transform:uppercase;margin-bottom:10px}
+h1{font-size:clamp(30px,4.4vw,52px);font-weight:800;letter-spacing:-.02em;line-height:1.05}
+h1 .grad{background:linear-gradient(92deg,#e7ecf3 10%,#8fb4ff 55%,#6ec3ff 90%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{margin-top:12px;color:var(--muted);max-width:900px;font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.chip{display:inline-flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:8px 16px;font-size:13px;color:var(--muted)}
+.chip b{color:var(--text);font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(52,211,153,.6);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.55)}70%{box-shadow:0 0 0 9px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+.refresh-btn{display:inline-flex;align-items:center;gap:8px;margin-left:auto;background:linear-gradient(135deg,#4f8cff,#2f6bd8);border:0;color:#fff;border-radius:999px;padding:9px 18px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:.2s;box-shadow:0 4px 14px rgba(79,140,255,.35)}
+.refresh-btn:hover{filter:brightness(1.12)}
+.refresh-btn:active{transform:scale(.97)}
+.refresh-btn:disabled{opacity:.6;cursor:wait}
+.refresh-btn svg{flex:none;transition:transform .4s}
+.refresh-btn.loading svg{animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.refresh-btn.ok{background:linear-gradient(135deg,#34d399,#0ea371);box-shadow:0 4px 14px rgba(52,211,153,.35)}
+.refresh-btn.err{background:linear-gradient(135deg,#f87171,#dc2626);box-shadow:0 4px 14px rgba(248,113,113,.35)}
+
+/* ---------- KPI ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:46px}
+.kpi{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:16px;padding:20px 22px;position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,var(--k,#4f8cff),transparent);opacity:.9}
+.kpi .lbl{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.kpi .val{font-size:32px;font-weight:800;margin-top:8px;letter-spacing:-.02em}
+.kpi .val small{font-size:16px;color:var(--muted);font-weight:600}
+.kpi .note{font-size:12.5px;color:var(--faint);margin-top:6px}
+
+/* ---------- Sections ---------- */
+.sec-head{display:flex;align-items:baseline;gap:14px;margin:0 0 18px}
+.sec-num{font-size:13px;font-weight:700;color:var(--bg);background:linear-gradient(135deg,#8fb4ff,#4f8cff);border-radius:8px;padding:4px 10px;letter-spacing:.06em}
+.sec-title{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.sec-head .hint{color:var(--muted);font-size:13px;margin-left:auto;text-align:right}
+
+/* ---------- National ---------- */
+.national{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr);gap:22px;margin-bottom:50px;align-items:stretch}
+.panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px;padding:22px;position:relative}
+.panel-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.panel-title h3{font-size:16px;font-weight:700}
+.panel-title .sub-t{font-size:12px;color:var(--muted);font-weight:500;text-align:right}
+.pie-stage{position:relative;height:480px;min-height:480px;border-radius:12px;overflow:hidden;
+  background:
+    radial-gradient(600px 340px at 50% 38%, rgba(79,140,255,.10), transparent 65%),
+    radial-gradient(400px 200px at 50% 90%, rgba(0,0,0,.5), transparent 70%);
+}
+.pie-stage .hint-t{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:11.5px;color:var(--faint);letter-spacing:.06em;pointer-events:none}
+.pie-tip{position:absolute;pointer-events:none;z-index:5;background:rgba(10,14,22,.95);border:1px solid var(--border2);border-radius:10px;padding:8px 12px;font-size:13px;display:none;white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.pie-tip .n{font-weight:800;font-size:15px}
+.mode{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:3px;gap:3px}
+.mode button{flex:1;border:0;background:transparent;color:var(--muted);font-size:12.5px;font-weight:600;padding:8px 10px;border-radius:8px;cursor:pointer;transition:.2s;font-family:inherit}
+.mode button.active{background:linear-gradient(135deg,#4f8cff,#2f6bd8);color:#fff;box-shadow:0 4px 14px rgba(79,140,255,.35)}
+.mode button:not(.active):hover{color:var(--text)}
+
+.national-data{display:flex;flex-direction:column;gap:14px}
+.legend-title{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.legend{display:flex;flex-direction:column;gap:9px}
+.leg-row{display:grid;grid-template-columns:14px 96px 1fr auto 44px;gap:12px;align-items:center;background:rgba(255,255,255,.02);border:1px solid transparent;border-radius:10px;padding:9px 12px;transition:.18s;cursor:default}
+.leg-row:hover{background:rgba(255,255,255,.05);border-color:var(--border2)}
+.leg-row .sw{width:14px;height:14px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+.leg-row .nm{font-size:13.5px;font-weight:600;white-space:nowrap}
+.leg-row .bar{height:7px;border-radius:99px;opacity:.85;min-width:6px}
+.leg-row .vl{font-size:15px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.leg-row .vl small{display:block;font-size:10.5px;font-weight:600;color:var(--faint);margin-top:1px}
+.leg-row .st{display:inline-block;font-size:12px;font-weight:800;text-align:center;color:var(--text);background:rgba(255,255,255,.07);border:1px solid var(--border2);border-radius:8px;padding:3px 6px;white-space:nowrap}
+.up{color:var(--ok)}.down{color:var(--bad)}.flat{color:var(--faint)}
+.note-box{margin-top:auto;border:1px solid var(--border);border-radius:12px;background:rgba(79,140,255,.05);padding:14px 16px;font-size:12.5px;color:var(--muted)}
+.note-box b{color:var(--text)}
+.note-box.inline{margin:0 0 18px}
+
+/* ---------- Map ---------- */
+.map-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,1fr);gap:22px;margin-bottom:50px;align-items:stretch}
+.map-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.map-toolbar .mode{flex:none}
+.map-toolbar select{flex:1;min-width:130px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer}
+#mapSvgWrap{position:relative}
+#deMap{width:100%;height:auto;display:block;filter:drop-shadow(0 14px 30px rgba(0,0,0,.45))}
+#deMap path{stroke:#0b0f17;stroke-width:.8;cursor:pointer;transition:fill .2s,stroke .15s,filter .15s}
+#deMap path:hover{stroke:#fff;stroke-width:1.6}
+#deMap path.sel{stroke:var(--gold);stroke-width:1.8}
+.map-tip{position:absolute;pointer-events:none;z-index:6;background:rgba(10,14,22,.96);border:1px solid var(--border2);border-radius:12px;padding:12px 14px;font-size:12.5px;display:none;box-shadow:0 14px 40px rgba(0,0,0,.55);min-width:190px}
+.map-tip .tname{font-weight:800;font-size:14px;margin-bottom:6px}
+.map-tip .trow{display:flex;align-items:center;gap:8px;color:var(--muted);line-height:1.7}
+.map-tip .trow .sw{width:9px;height:9px;border-radius:3px;flex:none}
+.map-tip .trow .nm{flex:1}
+.map-tip .trow .vl{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.map-err{padding:30px;color:var(--muted);font-size:14px;text-align:center}
+.map-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.map-legend .k{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:999px;padding:5px 11px}
+.map-legend .k i{width:11px;height:11px;border-radius:3px;flex:none}
+.grad-bar{height:14px;border-radius:99px;margin-top:8px;background:linear-gradient(90deg,var(--g0),var(--g1));border:1px solid var(--border)}
+.grad-lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--faint);margin-top:5px}
+
+/* ---------- Coalition ---------- */
+.coal-layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(280px,1fr);gap:22px;margin-bottom:50px;align-items:stretch}
+.coal-select{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:11px 12px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;margin-bottom:16px}
+.coal-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.coal-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--muted);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;transition:.18s;font-family:inherit}
+.coal-chip .sw{width:12px;height:12px;border-radius:4px;flex:none;opacity:.55;transition:.18s}
+.coal-chip .pc{font-variant-numeric:tabular-nums;color:var(--faint);font-weight:700}
+.coal-chip:hover{border-color:var(--border2);color:var(--text)}
+.coal-chip.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);color:var(--text);box-shadow:0 0 0 1px var(--c) inset}
+.coal-chip.on .sw{opacity:1}
+.coal-result{border:1px solid var(--border);border-radius:14px;padding:16px;background:rgba(255,255,255,.02)}
+.coal-sum{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.coal-sum .big{font-size:40px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.coal-sum .of{color:var(--muted);font-size:14px;font-weight:600}
+.coal-bar{height:16px;border-radius:99px;background:#161d2d;position:relative;margin:14px 0 6px;overflow:hidden}
+.coal-bar i{display:block;height:100%;background:linear-gradient(90deg,#4f8cff,#6ec3ff);border-radius:99px;transition:width .35s cubic-bezier(.2,.7,.25,1)}
+.coal-bar .th{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--gold)}
+.coal-bar-lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--faint)}
+.coal-verdict{margin-top:14px;display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;border-radius:999px;padding:8px 16px}
+.coal-verdict.ok{background:rgba(52,211,153,.14);color:var(--ok);border:1px solid rgba(52,211,153,.4)}
+.coal-verdict.no{background:rgba(248,113,113,.12);color:var(--bad);border:1px solid rgba(248,113,113,.35)}
+.coal-seats{margin-top:12px;font-size:13px;color:var(--muted)}
+.coal-seats b{color:var(--text)}
+.coal-note{margin-top:10px;font-size:11.5px;color:var(--faint)}
+.presets{display:flex;flex-direction:column;gap:8px}
+.preset{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);color:var(--text);border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;transition:.18s;font-family:inherit;text-align:left}
+.preset:hover{border-color:var(--border2);background:rgba(255,255,255,.05)}
+.preset .pl{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.preset .pl i{width:11px;height:11px;border-radius:3px;flex:none}
+.preset .pv{color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
+.preset .pv.ok{color:var(--ok)}
+.preset .pv.no{color:var(--bad)}
+
+/* ---------- State cards ---------- */
+.states{display:grid;grid-template-columns:repeat(auto-fill,minmax(390px,1fr));gap:18px}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s}
+.card:hover{transform:translateY(-3px);border-color:var(--border2);box-shadow:0 18px 44px rgba(0,0,0,.45)}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 18px 0}
+.card-head h3{font-size:16px;font-weight:700}
+.badge{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:#0b0f17;border-radius:999px;padding:4px 11px;letter-spacing:.02em}
+.card-body{display:grid;grid-template-columns:1.35fr 1fr;gap:6px;padding:8px 18px 18px}
+.bc3d-scene{position:relative;height:232px}
+.bc3d-scene .bc3d{position:absolute;inset:0}
+@media (max-width:560px){.card-body{grid-template-columns:1fr}.bc3d-scene{height:210px}}
+.dlist{display:flex;flex-direction:column;gap:5px;padding-top:8px}
+.drow{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.drow .sw{width:9px;height:9px;border-radius:3px;flex:none}
+.drow .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.drow .vl{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.drow .mbar{width:34px;height:4px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;flex:none}
+.drow .mbar i{display:block;height:100%;border-radius:99px;background:var(--c)}
+
+/* ---------- CSS 3D bars ---------- */
+.bc3d-persp{perspective:950px;position:absolute;inset:0}
+.bc3d-stage{position:absolute;left:2px;right:2px;top:6px;bottom:0;transform-style:preserve-3d;transform:rotateX(58deg)}
+.bc3d-floor{position:absolute;left:6px;right:6px;bottom:4px;height:150px;transform-style:preserve-3d;transform:rotateX(90deg);transform-origin:bottom center;
+  background-image:linear-gradient(rgba(148,163,184,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.09) 1px,transparent 1px);
+  background-size:26px 26px;border-top:1px solid rgba(148,163,184,.25)}
+.bc3d-bars{position:absolute;left:0;right:0;bottom:4px;height:200px;transform-style:preserve-3d}
+.bc3d-bar{position:absolute;bottom:0;width:22px;height:var(--h);transform-style:preserve-3d;transform:scaleY(0);transition:transform .75s cubic-bezier(.18,.7,.25,1)}
+.grow .bc3d-bar{transform:scaleY(1)}
+.bc3d-front{position:absolute;inset:0;background:linear-gradient(180deg,var(--cTop),var(--c));transform:translateZ(10px);box-shadow:inset 0 0 14px rgba(0,0,0,.30)}
+.bc3d-side{position:absolute;top:0;right:0;width:10px;height:100%;background:var(--cSide);transform:rotateY(-90deg);transform-origin:right center}
+.bc3d-top{position:absolute;top:0;left:0;width:100%;height:10px;background:var(--cTop);transform:rotateX(90deg);transform-origin:top center}
+.bc3d-bar:hover .bc3d-front{filter:brightness(1.18)}
+.bc3d-bar::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(var(--h) + 6px);transform:translateX(-50%);background:rgba(10,14,22,.95);border:1px solid var(--border2);color:var(--text);font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;white-space:nowrap;opacity:0;transition:.15s;pointer-events:none;z-index:3}
+.bc3d-bar:hover::after{opacity:1}
+
+/* ---------- Footer ---------- */
+footer{margin-top:56px;border-top:1px solid var(--border);padding-top:26px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:26px}
+footer h4{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:12px}
+footer ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+footer li{font-size:13px;color:var(--muted)}
+footer li b{color:var(--text)}
+footer a{color:var(--accent);text-decoration:none}
+footer a:hover{text-decoration:underline}
+.disc{grid-column:1/-1;font-size:12px;color:var(--faint);border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:rgba(255,255,255,.02)}
+</style>
+</head>
+<body>
+
+<div class="flag"><span class="s1"></span><span class="s2"></span><span class="s3"></span></div>
+
+<div class="wrap">
+
+  <header>
+    <div class="overline">Deutschland · Bundestagswahl</div>
+    <h1>Wahlprognosen im <span class="grad">3D-Blick</span></h1>
+    <p class="sub">Interaktives Dashboard: aktuelle politische Stimmung (Sonntagsfrage) für Deutschland, Sitzverteilung direkt auf dem 3D-Diagramm, Deutschlandkarte mit den Parteistärken je Land sowie ein fiktiver Koalitions-Simulator für den Bund und alle 16 Bundesländer.</p>
+    <div class="chips">
+      <span class="chip" id="standChip"><span class="dot"></span><span>Stand: <b>11. August 2026</b> · Sonntagsfrage (Dawum / Wahlrecht.de)</span></span>
+      <span class="chip">Offiziell: <b>Bundeswahlleiterin</b> · Bundestagswahl 2025</span>
+      <span class="chip">Nächste Bundestagswahl: <b>voraussichtl. 2029</b></span>
+      <button id="refreshBtn" class="refresh-btn" type="button" title="Aktuelle Sonntagsfrage von der Dawum-API (dawum.de) laden">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        <span id="refreshLabel">Jetzt aktualisieren</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi" style="--k:#009EE0">
+      <div class="lbl">Stärkste Kraft · Prognose</div>
+      <div class="val" id="kpiTopVal">AfD <small>28,1 %</small></div>
+      <div class="note" id="kpiTopNote">Durchschnitt aller Institute, August 2026</div>
+    </div>
+    <div class="kpi" style="--k:#222">
+      <div class="lbl">Sieger · Ergebnis 2025</div>
+      <div class="val">CDU/CSU <small>28,5 %</small></div>
+      <div class="note">Offizielles Endgültiges Ergebnis (Zweitstimmen)</div>
+    </div>
+    <div class="kpi" style="--k:#4f8cff">
+      <div class="lbl">Sitze im Bundestag</div>
+      <div class="val">630 <small>Mandate</small></div>
+      <div class="note">CDU/CSU 208 · AfD 152 · SPD 120 · Grüne 85 · Linke 64 · SSW 1</div>
+    </div>
+    <div class="kpi" style="--k:#34d399">
+      <div class="lbl">Wahlbeteiligung · 2025</div>
+      <div class="val">82,5 <small>%</small></div>
+      <div class="note">Wahlberechtigte: 60,51 Mio. · Wählende: 49,93 Mio.</div>
+    </div>
+  </div>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <h2 class="sec-title">Deutschland gesamt · inkl. Sitzverteilung</h2>
+      <span class="hint">3D-Torte drehbar · Sitzzahlen direkt auf den Segmenten</span>
+    </div>
+
+    <div class="national">
+      <div class="panel">
+        <div class="panel-title">
+          <h3>Deutschland im Überblick</h3>
+          <div class="mode" id="modeSwitch">
+            <button data-mode="prognose" class="active">Prognose 2026</button>
+            <button data-mode="ergebnis">Ergebnis 2025</button>
+          </div>
+        </div>
+        <div class="pie-stage" id="pie3d">
+          <div class="hint-t">ZIEHEN ZUM DREHEN · HOVER FÜR WERTE &amp; SITZE</div>
+          <div class="pie-tip" id="pieTip"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h3>Zahlen im Detail</h3>
+          <span class="sub-t" id="legendSub">Sonntagsfrage · Stand 11.08.2026</span>
+        </div>
+        <div class="legend-title" id="legendHead">Stimmenanteile in %</div>
+        <div class="legend" id="legendRows"></div>
+        <div class="note-box" id="nationalNote"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">02</span>
+      <h2 class="sec-title">Deutschlandkarte · Parteistärke je Land</h2>
+      <span class="hint">Offizielles Ergebnis 2025 · Klick wählt das Land im Simulator</span>
+    </div>
+    <div class="map-layout">
+      <div class="panel">
+        <div class="map-toolbar">
+          <div class="mode" id="mapMode">
+            <button data-mm="top" class="active">Stärkste Partei</button>
+            <button data-mm="party">Partei-Anteil</button>
+          </div>
+          <select id="mapParty" style="display:none"></select>
+        </div>
+        <div id="mapSvgWrap">
+          <svg id="deMap" viewBox="0 0 586 793" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="map-tip" id="mapTip"></div>
+        </div>
+        <div class="map-legend" id="mapLegend"></div>
+      </div>
+      <div class="panel" style="display:flex;flex-direction:column;gap:14px">
+        <div class="legend-title">Ausgewähltes Land</div>
+        <div id="mapDetail">
+          <p style="color:var(--faint);font-size:13px">Klicke ein Bundesland auf der Karte an, um hier die Zahlen zu sehen – die Auswahl wird auch im Koalitions-Simulator übernommen.</p>
+        </div>
+        <div class="note-box" id="mapNote" style="margin-top:auto"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">03</span>
+      <h2 class="sec-title">Koalitions-Simulator · fiktiv</h2>
+      <span class="hint">Land auswählen, Parteien antippen, Mehrheit prüfen</span>
+    </div>
+    <div class="coal-layout">
+      <div class="panel">
+        <select id="coalSelect" class="coal-select"></select>
+        <div class="coal-chips" id="coalChips"></div>
+        <div class="coal-result">
+          <div class="coal-sum">
+            <span class="big" id="coalPct">0,0&nbsp;%</span>
+            <span class="of">der Stimmen</span>
+            <span id="coalVerdict"></span>
+          </div>
+          <div class="coal-bar"><i id="coalBarFill" style="width:0%"></i><span class="th" style="left:100%"></span></div>
+          <div class="coal-bar-lbl"><span>0 %</span><span>Mehrheit 50 %</span><span>100 %</span></div>
+          <div class="coal-seats" id="coalSeats"></div>
+          <div class="coal-note" id="coalNote"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="legend-title" style="margin-bottom:14px">Schnellauswahl typischer Koalitionen</div>
+        <div class="presets" id="coalPresets"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">04</span>
+      <h2 class="sec-title">Die 16 Bundesländer im Detail</h2>
+      <span class="hint">Offizielles Ergebnis 2025 · Zweitstimmen je Land</span>
+    </div>
+    <div class="note-box inline">
+      <b>Hinweis:</b> Für die Bundesländer liegen derzeit keine einheitlichen aktuellen Bundestags-Prognosen vor (vorhandene Landesumfragen betreffen überwiegend Landtagswahlen). Daher zeigen die Länder-Diagramme das <b>offizielle endgültige Zweitstimmen-Ergebnis der Bundestagswahl 2025</b> je Bundesland (Quelle: Bundeswahlleiterin). Parteien unter 5 % werden einheitlich <b>grau</b> dargestellt.
+    </div>
+    <div class="states" id="statesGrid"></div>
+  </section>
+
+  <footer>
+    <div>
+      <h4>Offizielle Quellen</h4>
+      <ul>
+        <li><b>Die Bundeswahlleiterin</b> – Endgültiges Ergebnis der Bundestagswahl 2025 (Zweitstimmen &amp; Sitzverteilung, Bund &amp; Länder)</li>
+        <li><a href="https://bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse.html">bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse.html</a></li>
+        <li><b>Deutscher Bundestag</b> – Sitzverteilung im 21. Bundestag</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Inoffizielle / Prognose-Quellen</h4>
+      <ul>
+        <li id="footerPoll"><b>Dawum / Politmonitor</b> – Durchschnitt aller Institute (Sonntagsfrage), Stand <b>11.08.2026</b>: AfD 28,1 % · CDU/CSU 20,9 % · Grüne 14,8 % · SPD 12,1 % · Linke 11,9 % · Sonstige 6,4 % · FDP 4,4 % · BSW 3,0 %</li>
+        <li><b>Wahlrecht.de</b> – Sonntagsfrage-Übersicht aller Institute (u.&nbsp;a. INSA, Forsa, Infratest dimap, Allensbach)</li>
+        <li><a href="https://www.wahlrecht.de/umfragen/">wahlrecht.de/umfragen/</a> · <a href="https://dawum.de">dawum.de</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Farbgebung &amp; Kartenbasis</h4>
+      <ul>
+        <li>CDU/CSU <b style="color:#9aa4b2">schwarz</b> · SPD <b style="color:#ff5a63">rot</b> · Grüne <b style="color:#7cc84d">grün</b> · AfD <b style="color:#38b6ff">hellblau</b> · Linke <b style="color:#ff5ea0">rosa</b> · FDP <b style="color:#ffd84d">gelb</b> · BSW <b style="color:#ff6ab5">magenta</b></li>
+        <li>Alles unter 5 % wird einheitlich <b style="color:#8a93a3">grau</b> dargestellt.</li>
+        <li>Deutschlandkarte: <a href="https://www.npmjs.com/package/@svg-maps/germany">@svg-maps/germany</a> (CC-BY-4.0)</li>
+      </ul>
+    </div>
+    <div class="disc">
+      <b>Methodik-Hinweis:</b> Die „Sonntagsfrage“ misst die aktuelle politische Stimmung als Momentaufnahme – keine Prognose des Wahlergebnisses, Fehlertoleranz ca. ±2–3 Prozentpunkte. Die Länderdiagramme und die Karte zeigen das amtliche Ergebnis der Bundestagswahl vom 23.02.2025. Die Sitzzahlen für die Prognose werden nach der Fünf-Prozent-Hürde (Hare/Niemeyer, 630 Sitze) rechnerisch ermittelt; für 2025 gelten die amtlichen Sitzzahlen. Der Koalitions-Simulator ist rein fiktiv und trifft keine Aussage über tatsächliche Koalitionsverhandlungen. Die nächste reguläre Bundestagswahl ist voraussichtlich 2029.
+    </div>
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+
+const fmt = v => v.toFixed(1).replace(".", ",");
+
+const PARTY = {
+  cdu:{label:"CDU/CSU", color:"#303030"},
+  spd:{label:"SPD", color:"#E3000F"},
+  gru:{label:"GRÜNE", color:"#64A12D"},
+  afd:{label:"AfD", color:"#009EE0"},
+  lin:{label:"Die Linke", color:"#E30068"},
+  bsw:{label:"BSW", color:"#D2267B"},
+  fdp:{label:"FDP", color:"#FFD700"},
+  son:{label:"Sonstige", color:"#8a93a3"}
+};
+const GREY = "#8a93a3";
+const ORDER = ["cdu","spd","gru","afd","lin","bsw","fdp","son"];
+const TOTAL_SEATS = 630;
+
+function partyColor(key, value){
+  if(value < 5) return GREY;
+  return PARTY[key].color;
+}
+function partyColorStrict(key){
+  return PARTY[key].color;
+}
+
+const NATIONAL = {
+  prognose:{
+    label:"Sonntagsfrage · Prognose 2026",
+    sub:"Durchschnitt aller Institute · Stand 11.08.2026",
+    cdu:20.9, spd:12.1, gru:14.8, afd:28.1, lin:11.9, bsw:3.0, fdp:4.4, son:6.4
+  },
+  ergebnis:{
+    label:"Offizielles Ergebnis · Bundestagswahl 2025",
+    sub:"Endgültiges Zweitstimmen-Ergebnis · 23.02.2025",
+    cdu:28.5, spd:16.4, gru:11.6, afd:20.8, lin:8.8, bsw:5.0, fdp:4.3, son:4.6
+  }
+};
+
+const STATES = [
+  {key:"bw", name:"Baden-Württemberg",  seats:79,  vals:{cdu:31.6,spd:14.2,gru:13.6,afd:19.8,lin:6.8,bsw:4.1,fdp:5.6,son:4.3}},
+  {key:"by", name:"Bayern",             seats:101, vals:{cdu:37.2,spd:11.5,gru:12.0,afd:19.0,lin:5.7,bsw:3.1,fdp:4.2,son:3.0}},
+  {key:"be", name:"Berlin",             seats:24,  vals:{cdu:18.3,spd:15.1,gru:16.8,afd:15.2,lin:19.9,bsw:6.7,fdp:3.8,son:4.2}},
+  {key:"bb", name:"Brandenburg",        seats:21,  vals:{cdu:18.1,spd:14.8,gru:6.6,afd:32.5,lin:10.7,bsw:10.7,fdp:3.2,son:3.4}},
+  {key:"hb", name:"Bremen",             seats:5,   vals:{cdu:20.6,spd:23.1,gru:15.6,afd:15.1,lin:14.8,bsw:4.3,fdp:3.5,son:3.0}},
+  {key:"hh", name:"Hamburg",            seats:13,  vals:{cdu:20.7,spd:22.7,gru:19.3,afd:10.9,lin:14.5,bsw:4.0,fdp:4.5,son:3.4}},
+  {key:"he", name:"Hessen",             seats:45,  vals:{cdu:28.9,spd:18.4,gru:12.6,afd:17.8,lin:8.7,bsw:4.4,fdp:5.0,son:4.2}},
+  {key:"mv", name:"Mecklenburg-Vorp.",  seats:13,  vals:{cdu:17.8,spd:12.4,gru:5.4,afd:35.0,lin:12.0,bsw:10.6,fdp:3.2,son:3.6}},
+  {key:"ni", name:"Niedersachsen",      seats:65,  vals:{cdu:28.1,spd:23.0,gru:11.5,afd:17.8,lin:8.1,bsw:3.8,fdp:4.1,son:3.6}},
+  {key:"nw", name:"Nordrhein-Westfalen",seats:136, vals:{cdu:30.1,spd:20.0,gru:12.4,afd:16.8,lin:8.3,bsw:4.1,fdp:4.4,son:3.9}},
+  {key:"rp", name:"Rheinland-Pfalz",    seats:31,  vals:{cdu:30.6,spd:18.6,gru:10.3,afd:20.1,lin:6.5,bsw:4.2,fdp:4.6,son:5.1}},
+  {key:"sl", name:"Saarland",           seats:8,   vals:{cdu:26.9,spd:21.9,gru:7.2,afd:21.6,lin:7.4,bsw:6.2,fdp:4.3,son:4.5}},
+  {key:"sn", name:"Sachsen",            seats:30,  vals:{cdu:19.7,spd:8.5,gru:6.5,afd:37.3,lin:11.3,bsw:9.0,fdp:3.2,son:4.5}},
+  {key:"st", name:"Sachsen-Anhalt",     seats:16,  vals:{cdu:19.2,spd:11.0,gru:4.4,afd:37.1,lin:10.8,bsw:11.2,fdp:3.1,son:3.2}},
+  {key:"sh", name:"Schleswig-Holstein", seats:25,  vals:{cdu:27.6,spd:18.8,gru:14.9,afd:16.3,lin:7.8,bsw:3.4,fdp:4.7,son:6.5}},
+  {key:"th", name:"Thüringen",          seats:18,  vals:{cdu:18.6,spd:8.8,gru:4.2,afd:38.6,lin:15.2,bsw:9.4,fdp:2.8,son:2.4}}
+];
+const MAP_ID_TO_STATE = {bw:0,by:1,be:2,bb:3,hb:4,hh:5,he:6,mv:7,ni:8,nw:9,rp:10,sl:11,sn:12,st:13,sh:14,th:15};
+
+/* ---------- color utils ---------- */
+function hexToRgb(h){
+  h=h.replace("#","");
+  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+}
+function mix(hex, target, amt){
+  const c=hexToRgb(hex), t=target==="w"?[255,255,255]:[0,0,0];
+  const r=Math.round(c[0]+(t[0]-c[0])*amt), g=Math.round(c[1]+(t[1]-c[1])*amt), b=Math.round(c[2]+(t[2]-c[2])*amt);
+  return "#"+[r,g,b].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+const lighter=(h,a=.35)=>mix(h,"w",a);
+const darker=(h,a=.45)=>mix(h,"b",a);
+function withAlpha(hex,a){
+  const c=hexToRgb(hex);
+  return `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
+}
+
+/* ---------- seat allocation ---------- */
+function allocateSeats(weights, totalSeats){
+  const keys=Object.keys(weights);
+  const tot=keys.reduce((s,k)=>s+weights[k],0)||1;
+  const raw={}, floor={};
+  let used=0;
+  keys.forEach(k=>{raw[k]=weights[k]/tot*totalSeats; floor[k]=Math.floor(raw[k]); used+=floor[k];});
+  const rem=totalSeats-used;
+  keys.slice().sort((a,b)=>(raw[b]-floor[b])-(raw[a]-floor[a])).forEach((k,i)=>{if(i<rem)floor[k]++;});
+  return floor;
+}
+function nationalSeats(data, mode){
+  if(mode==="ergebnis") return {cdu:208,spd:120,gru:85,afd:152,lin:64,bsw:0,fdp:0,son:1};
+  const q=ORDER.filter(k=>k!=="son"&&data[k]>=5);
+  const w={}; q.forEach(k=>w[k]=data[k]);
+  const s=allocateSeats(w,TOTAL_SEATS);
+  const out={}; ORDER.forEach(k=>out[k]=s[k]||0);
+  return out;
+}
+function stateSeats(vals, seatTotal){
+  const q=ORDER.filter(k=>k!=="son"&&vals[k]>=5);
+  const w={}; q.forEach(k=>w[k]=vals[k]);
+  const s=allocateSeats(w,seatTotal);
+  const out={}; ORDER.forEach(k=>out[k]=s[k]||0);
+  return out;
+}
+function topParty(vals){
+  return ORDER.reduce((a,k)=>vals[k]>a.v?{k,v:vals[k]}:a,{k:ORDER[0],v:vals[ORDER[0]]});
+}
+function maxOf(vals){return Math.max(...ORDER.map(k=>vals[k]));}
+
+/* ---------- National legend ---------- */
+let mode="prognose";
+const legendRows=document.getElementById("legendRows");
+const legendSub=document.getElementById("legendSub");
+const legendHead=document.getElementById("legendHead");
+const nationalNote=document.getElementById("nationalNote");
+
+function buildLegend(){
+  const data=NATIONAL[mode];
+  legendSub.textContent=data.sub;
+  legendHead.textContent=mode==="prognose" ? "Stimmenanteile in % · Prognose" : "Stimmenanteile in % · Ergebnis 2025";
+  const seats=nationalSeats(data,mode);
+  const base=NATIONAL.ergebnis;
+  const maxV=Math.max(...ORDER.map(k=>data[k]));
+  const rows=ORDER.map(k=>{
+    const v=data[k], col=partyColor(k,v);
+    let delta="";
+    if(mode==="prognose"){
+      const d=v-base[k];
+      const cls=d>0.05?"up":d<-0.05?"down":"flat";
+      const sign=d>0?"+":"";
+      delta=`<small class="${cls}">${sign}${fmt(d)} pp</small>`;
+    }
+    return `<div class="leg-row" data-k="${k}">
+      <span class="sw" style="background:${col}"></span>
+      <span class="nm">${PARTY[k].label}</span>
+      <span class="bar" style="background:${col};width:${Math.max(4,v/maxV*100)}%"></span>
+      <span class="vl">${fmt(v)}&nbsp;%${delta}</span>
+      <span class="st" title="Sitze im Bundestag">${seats[k]}</span>
+    </div>`;
+  }).join("");
+  legendRows.innerHTML=rows;
+  legendRows.querySelectorAll(".leg-row").forEach(r=>{
+    r.addEventListener("mouseenter",()=>highlightSlice(r.dataset.k,true));
+    r.addEventListener("mouseleave",()=>highlightSlice(r.dataset.k,false));
+  });
+  nationalNote.innerHTML = mode==="prognose"
+    ? nationalNotePrognose()
+    : `<b>Ergebnis 2025:</b> CDU/CSU (28,5 % / 208 Sitze) und AfD (20,8 % / 152) waren die stärksten Kräfte. SPD (16,4 % / 120), Grüne (11,6 % / 85), Linke (8,8 % / 64) und SSW (1 Sitz) zogen in den Bundestag ein.`;
+}
+
+function nationalNotePrognose(){
+  const d=NATIONAL.prognose;
+  const top=ORDER.reduce((a,k)=>d[k]>d[a]?k:a,ORDER[0]);
+  const below=ORDER.filter(k=>k!=="son"&&d[k]>0&&d[k]<5);
+  let s=`<b>Interpretation:</b> Würde am nächsten Sonntag Bundestagswahl stattfinden, läge <b>${PARTY[top].label}</b> laut Institutsschnitt mit <b>${fmt(d[top])}&nbsp;%</b> an der Spitze.`;
+  if(below.length){
+    s+=` Unter der Fünf-Prozent-Hürde lägen ${deList(below.map(k=>`${PARTY[k].label} (${fmt(d[k])}&nbsp;%)`))} – sie erhielten <b>0 Sitze</b> und sind grau dargestellt.`;
+  }
+  s+=` Die Sitzzahlen (630 Mandate) sind rechnerisch nach Hare/Niemeyer verteilt.`;
+  return s;
+}
+
+/* ---------- 3D Pie ---------- */
+let pieScene,pieCamera,pieRenderer,pieGroup,pieControls,pieSliceMeshes=[],pieHovered=null;
+const pieEl=document.getElementById("pie3d");
+const pieTip=document.getElementById("pieTip");
+const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+let webglOk=true;
+
+function makeTextSprite(text){
+  const c=document.createElement("canvas");
+  c.width=256;c.height=128;
+  const ctx=c.getContext("2d");
+  ctx.clearRect(0,0,256,128);
+  ctx.font='800 90px "Segoe UI",Arial,sans-serif';
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.shadowColor="rgba(0,0,0,.85)";ctx.shadowBlur=20;ctx.shadowOffsetY=3;
+  ctx.fillStyle="#ffffff";
+  ctx.fillText(text,128,68);
+  const tex=new THREE.CanvasTexture(c);
+  tex.minFilter=THREE.LinearFilter;
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true});
+  const sp=new THREE.Sprite(mat);
+  sp.scale.set(1.65,0.82,1);
+  return sp;
+}
+
+function buildPie(){
+  if(!pieGroup) return;
+  clearPie();
+  const data=NATIONAL[mode];
+  const seats=nationalSeats(data,mode);
+  const total=ORDER.reduce((s,k)=>s+data[k],0);
+  const radius=4, depth=1.15;
+  let ang=-Math.PI/2;
+  ORDER.forEach(k=>{
+    const v=data[k], col=partyColor(k,v);
+    const len=v/total*Math.PI*2;
+    const geo=new THREE.CylinderGeometry(radius,radius,depth,60,1,false,ang,len);
+    const mat=new THREE.MeshStandardMaterial({
+      color:col, roughness:.42, metalness:.18,
+      emissive:col, emissiveIntensity:.08
+    });
+    const mesh=new THREE.Mesh(geo,mat);
+    mesh.userData={key:k,value:v,label:PARTY[k].label,seats:seats[k],mid:ang+len/2,base:new THREE.Vector3()};
+    pieGroup.add(mesh);
+    pieSliceMeshes.push(mesh);
+    const edge=new THREE.LineSegments(
+      new THREE.EdgesGeometry(geo,20),
+      new THREE.LineBasicMaterial({color:0x0a0e16,transparent:true,opacity:.5})
+    );
+    pieGroup.add(edge);
+    if(seats[k]>=15){
+      const sp=makeTextSprite(String(seats[k]));
+      const rc=(2*radius*Math.sin(len/2))/(3*len/2);
+      const mx=Math.sin(ang+len/2), mz=Math.cos(ang+len/2);
+      sp.position.set(rc*mx, depth/2+0.18, rc*mz);
+      pieGroup.add(sp);
+    }
+    ang+=len;
+  });
+}
+
+function clearPie(){
+  while(pieGroup.children.length){
+    const c=pieGroup.children.pop();
+    if(c.isSprite){
+      if(c.material&&c.material.map){c.material.map.dispose();}
+      if(c.material)c.material.dispose();
+    }else{
+      if(c.geometry)c.geometry.dispose();
+      if(c.material){if(Array.isArray(c.material))c.material.forEach(m=>m.dispose());else c.material.dispose();}
+    }
+  }
+  pieSliceMeshes=[];
+  pieHovered=null;
+}
+
+function highlightSlice(key,on){
+  pieSliceMeshes.forEach(m=>{
+    if(m.userData.key===key){
+      m.material.emissiveIntensity=on?0.35:0.08;
+      const dir=new THREE.Vector3(Math.sin(m.userData.mid),0,Math.cos(m.userData.mid));
+      m.position.copy(m.userData.base).addScaledVector(dir,on?0.14:0);
+    }
+  });
+}
+
+function onPointerMove(e){
+  const rect=pieRenderer.domElement.getBoundingClientRect();
+  pointer.x=((e.clientX-rect.left)/rect.width)*2-1;
+  pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(pointer,pieCamera);
+  const hits=raycaster.intersectObjects(pieSliceMeshes);
+  if(hits.length){
+    const u=hits[0].object.userData;
+    if(pieHovered!==u.key){
+      if(pieHovered)highlightSlice(pieHovered,false);
+      pieHovered=u.key;
+      highlightSlice(u.key,true);
+    }
+    pieTip.style.display="block";
+    pieTip.innerHTML=`<span class="n" style="color:${partyColor(u.key,u.value)}">${u.label}</span> · ${fmt(u.value)}&nbsp;% · <b>${u.seats} Sitze</b>`;
+    pieTip.style.left=(e.clientX-rect.left+16)+"px";
+    pieTip.style.top=(e.clientY-rect.top+14)+"px";
+  }else{
+    if(pieHovered){highlightSlice(pieHovered,false);pieHovered=null;}
+    pieTip.style.display="none";
+  }
+}
+function onPointerLeave(){pieTip.style.display="none";if(pieHovered){highlightSlice(pieHovered,false);pieHovered=null;}}
+
+function initPie(){
+  try{
+    pieRenderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:"high-performance"});
+  }catch(e){webglOk=false;buildFallback();return;}
+  pieRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  pieRenderer.setSize(pieEl.clientWidth,pieEl.clientHeight);
+  pieEl.insertBefore(pieRenderer.domElement,pieEl.firstChild);
+  pieScene=new THREE.Scene();
+  pieCamera=new THREE.PerspectiveCamera(42,pieEl.clientWidth/pieEl.clientHeight,0.1,100);
+  pieCamera.position.set(0,4.6,7.4);
+  pieScene.add(new THREE.HemisphereLight(0xffffff,0x33335a,0.95));
+  const d1=new THREE.DirectionalLight(0xffffff,1.05);d1.position.set(4,7,5);pieScene.add(d1);
+  const d2=new THREE.DirectionalLight(0x88bbff,0.4);d2.position.set(-5,2,-4);pieScene.add(d2);
+  const d3=new THREE.DirectionalLight(0xffcc88,0.22);d3.position.set(2,-3,6);pieScene.add(d3);
+  pieControls=new THREE.OrbitControls(pieCamera,pieRenderer.domElement);
+  pieControls.enablePan=false;pieControls.enableZoom=false;
+  pieControls.minPolarAngle=1.05;pieControls.maxPolarAngle=1.55;
+  pieControls.autoRotate=true;pieControls.autoRotateSpeed=1.4;
+  pieControls.enableDamping=true;pieControls.dampingFactor=0.08;
+  pieControls.addEventListener("start",()=>{pieControls.autoRotate=false;});
+  pieGroup=new THREE.Group();pieScene.add(pieGroup);
+  buildPie();
+  pieRenderer.domElement.addEventListener("pointermove",onPointerMove);
+  pieRenderer.domElement.addEventListener("pointerleave",onPointerLeave);
+  animate();
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  if(!pieRenderer)return;
+  pieControls.update();
+  pieRenderer.render(pieScene,pieCamera);
+}
+
+function onResize(){
+  if(!pieRenderer)return;
+  const w=pieEl.clientWidth,h=pieEl.clientHeight;
+  if(w<10)return;
+  pieRenderer.setSize(w,h);
+  pieCamera.aspect=w/h;pieCamera.updateProjectionMatrix();
+}
+window.addEventListener("resize",onResize);
+
+function buildFallback(){
+  const data=NATIONAL[mode];
+  const total=ORDER.reduce((s,k)=>s+data[k],0);
+  let acc=0;
+  const stops=ORDER.map(k=>{
+    const col=partyColor(k,data[k]);
+    const from=acc/total*360,to=(acc+data[k])/total*360;
+    acc+=data[k];
+    return col+" "+from.toFixed(1)+"deg "+to.toFixed(1)+"deg";
+  });
+  pieEl.innerHTML=`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+    <div style="width:min(78%,340px);aspect-ratio:1;border-radius:50%;
+      background:conic-gradient(${stops.join(",")});
+      -webkit-mask:radial-gradient(closest-side,transparent 62%,#000 63%);
+      mask:radial-gradient(closest-side,transparent 62%,#000 63%);
+      box-shadow:0 20px 60px rgba(0,0,0,.5)"></div></div>
+    <div class="hint-t">WebGL nicht verfügbar · 2D-Ansicht</div>`;
+  buildLegend();
+}
+
+/* ---------- mode switch ---------- */
+document.getElementById("modeSwitch").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  mode=b.dataset.mode;
+  document.querySelectorAll("#modeSwitch button").forEach(x=>x.classList.toggle("active",x===b));
+  buildLegend();
+  if(webglOk&&pieGroup){buildPie();}
+  else{buildFallback();}
+});
+
+/* ---------- Germany map ---------- */
+const MAP_SVG_URL="https://cdn.jsdelivr.net/npm/@svg-maps/germany@2.0.0/germany.svg";
+let mapModeMode="top";
+const mapSvg=document.getElementById("deMap");
+const mapTip=document.getElementById("mapTip");
+const mapLegend=document.getElementById("mapLegend");
+const mapDetail=document.getElementById("mapDetail");
+const mapPartySel=document.getElementById("mapParty");
+let selectedState=null;
+const mapPaths={};
+
+function initMapPartySel(){
+  ORDER.forEach(k=>{
+    const o=document.createElement("option");
+    o.value=k;o.textContent=PARTY[k].label;
+    mapPartySel.appendChild(o);
+  });
+  mapPartySel.value="afd";
+}
+
+function paintMap(){
+  const selParty=mapPartySel.value;
+  const maxShare={}; ORDER.forEach(k=>{maxShare[k]=Math.max(...STATES.map(s=>s.vals[k]));});
+  Object.values(mapPaths).forEach(p=>{
+    const st=STATES[MAP_ID_TO_STATE[p.dataset.st]];
+    if(mapModeMode==="top"){
+      const t=topParty(st.vals);
+      p.style.fill=partyColor(t.k,t.v);
+    }else{
+      const v=st.vals[selParty];
+      const a=0.16+0.84*(v/maxShare[selParty]);
+      p.style.fill=withAlpha(partyColorStrict(selParty),a);
+    }
+    p.classList.toggle("sel",selectedState===st.key);
+  });
+  if(mapModeMode==="top"){
+    mapLegend.innerHTML=ORDER.map(k=>
+      `<span class="k"><i style="background:${partyColorStrict(k)}"></i>${PARTY[k].label}</span>`).join("")
+      +`<span class="k" style="opacity:.7"><i style="background:#8a93a3"></i>&lt; 5 % grau</span>`;
+  }else{
+    const c=partyColorStrict(selParty);
+    const mx=maxShare[selParty].toFixed(1).replace(".",",");
+    mapLegend.innerHTML=`<span class="k"><i style="background:${c}"></i>Anteil: ${PARTY[selParty].label}</span>
+      <div style="width:100%">
+        <div class="grad-bar" style="--g0:${withAlpha(c,.15)};--g1:${c}"></div>
+        <div class="grad-lbl"><span>0 %</span><span>Max. ${mx} %</span></div>
+      </div>`;
+  }
+}
+
+function showMapDetail(stKey){
+  const st=STATES.find(s=>s.key===stKey);
+  if(!st)return;
+  selectedState=stKey;
+  coalArea=stKey;
+  const t=topParty(st.vals);
+  const tCol=partyColor(t.k,t.v);
+  const rows=ORDER.slice().sort((a,b)=>st.vals[b]-st.vals[a]).map(k=>{
+    const col=partyColor(k,st.vals[k]);
+    return `<div class="drow"><span class="sw" style="background:${col}"></span>
+      <span class="nm">${PARTY[k].label}</span>
+      <span class="vl">${fmt(st.vals[k])}&nbsp;%</span>
+      <span class="mbar" style="width:44px"><i style="--c:${col};width:${Math.round(st.vals[k]/maxOf(st.vals)*100)}%"></i></span></div>`;
+  }).join("");
+  mapDetail.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+      <span style="font-weight:800;font-size:18px">${st.name}</span>
+      <span class="badge" style="background:${tCol}">${PARTY[t.k].label} ${fmt(t.v)}&nbsp;%</span>
+    </div>
+    <div class="dlist" style="padding-top:0">${rows}</div>
+    <div style="margin-top:12px;font-size:12.5px;color:var(--muted)">${st.seats} Bundestagssitze · ${stateSeats(st.vals,st.seats)[t.k]} für ${PARTY[t.k].label}</div>`;
+  paintMap();
+  const sel=document.getElementById("coalSelect");
+  sel.value=stKey;
+  updateCoal();
+}
+
+function mapTooltip(stKey,e){
+  const st=STATES.find(s=>s.key===stKey);
+  const rows=ORDER.slice().sort((a,b)=>st.vals[b]-st.vals[a]).map(k=>
+    `<div class="trow"><span class="sw" style="background:${partyColor(k,st.vals[k])}"></span>
+     <span class="nm">${PARTY[k].label}</span><span class="vl">${fmt(st.vals[k])}&nbsp;%</span></div>`).join("");
+  mapTip.innerHTML=`<div class="tname">${st.name}</div>${rows}`;
+  const wrap=document.getElementById("mapSvgWrap").getBoundingClientRect();
+  mapTip.style.left=(e.clientX-wrap.left+16)+"px";
+  mapTip.style.top=(e.clientY-wrap.top+10)+"px";
+  mapTip.style.display="block";
+}
+
+async function initMap(){
+  try{
+    const txt=await fetch(MAP_SVG_URL).then(r=>{if(!r.ok)throw new Error(r.status);return r.text();});
+    const doc=new DOMParser().parseFromString(txt,"image/svg+xml");
+    const err=doc.querySelector("parsererror");
+    if(err)throw new Error("parse");
+    const paths=[...doc.querySelectorAll("path")];
+    paths.forEach(p=>{
+      const id=p.id||"";
+      if(!MAP_ID_TO_STATE.hasOwnProperty(id))return;
+      const g=document.createElementNS("http://www.w3.org/2000/svg","path");
+      g.setAttribute("d",p.getAttribute("d"));
+      g.setAttribute("data-st",id);
+      mapSvg.appendChild(g);
+      mapPaths[id]=g;
+    });
+    mapSvg.addEventListener("mousemove",e=>{
+      const t=e.target.closest("path");
+      if(t&&t.dataset.st){mapTooltip(t.dataset.st,e);}
+      else{mapTip.style.display="none";}
+    });
+    mapSvg.addEventListener("mouseleave",()=>{mapTip.style.display="none";});
+    mapSvg.addEventListener("click",e=>{
+      const t=e.target.closest("path");
+      if(t&&t.dataset.st)showMapDetail(t.dataset.st);
+    });
+    paintMap();
+    showMapDetail("by");
+  }catch(err){
+    mapSvg.outerHTML=`<div class="map-err">Kartendaten konnten nicht geladen werden (offline?).
+      Bitte mit Internetverbindung erneut öffnen. — ${err.message}</div>`;
+  }
+}
+
+document.getElementById("mapMode").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  mapModeMode=b.dataset.mm;
+  document.querySelectorAll("#mapMode button").forEach(x=>x.classList.toggle("active",x===b));
+  mapPartySel.style.display=mapModeMode==="party"?"block":"none";
+  paintMap();
+});
+mapPartySel.addEventListener("change",paintMap);
+
+/* ---------- Coalition simulator ---------- */
+let coalArea="de";
+const coalSel=document.getElementById("coalSelect");
+const coalChips=document.getElementById("coalChips");
+const coalPct=document.getElementById("coalPct");
+const coalBarFill=document.getElementById("coalBarFill");
+const coalVerdict=document.getElementById("coalVerdict");
+const coalSeats=document.getElementById("coalSeats");
+const coalNote=document.getElementById("coalNote");
+const coalPresets=document.getElementById("coalPresets");
+const coalSelSet=new Set();
+
+const PRESETS=[
+  {label:"GroKo",keys:["cdu","spd"]},
+  {label:"Schwarz-Gelb",keys:["cdu","fdp"]},
+  {label:"Schwarz-Grün",keys:["cdu","gru"]},
+  {label:"Kenia",keys:["cdu","spd","gru"]},
+  {label:"Jamaika",keys:["cdu","gru","fdp"]},
+  {label:"Ampel",keys:["spd","gru","fdp"]},
+  {label:"Rot-Rot-Grün",keys:["spd","gru","lin"]},
+  {label:"Deutschland-Koalition",keys:["cdu","spd","fdp"]},
+  {label:"AfD+CDU (hypoth.)",keys:["afd","cdu"]},
+  {label:"AfD+BSW (hypoth.)",keys:["afd","bsw"]},
+  {label:"Linksbündnis (hypoth.)",keys:["lin","bsw"]}
+];
+
+function coalDataset(){
+  if(coalArea==="de"){
+    const data=NATIONAL.prognose;
+    return {name:"Deutschland",dataset:"Prognose 2026 · Sonntagsfrage",vals:data,
+      seats:nationalSeats(data,"prognose"),total:TOTAL_SEATS,
+      note:"Sitze nach 5%-Hürde (Hare/Niemeyer, 630 Mandate). Parteien unter 5 % erhalten 0 Sitze."};
+  }
+  const st=STATES.find(s=>s.key===coalArea);
+  return {name:st.name,dataset:"Ergebnis Bundestagswahl 2025 · Zweitstimmen",vals:st.vals,
+    seats:stateSeats(st.vals,st.seats),total:st.seats,
+    note:"Sitze dieses Landes im Bundestag (amtliche Verteilung) nach 5%-Hürde."};
+}
+
+function initCoal(){
+  const o=document.createElement("option");
+  o.value="de";o.textContent="Deutschland (Prognose 2026)";
+  coalSel.appendChild(o);
+  STATES.forEach(st=>{
+    const opt=document.createElement("option");
+    opt.value=st.key;opt.textContent=st.name+" ("+st.seats+" Sitze)";
+    coalSel.appendChild(opt);
+  });
+  PRESETS.forEach((p,i)=>{
+    const b=document.createElement("button");
+    b.className="preset";
+    b.dataset.pi=i;
+    const dots=p.keys.map(k=>`<i style="background:${partyColorStrict(k)}"></i>`).join("");
+    b.innerHTML=`<span class="pl">${dots}${p.label}</span><span class="pv"></span>`;
+    b.addEventListener("click",()=>{
+      coalSelSet.clear();
+      p.keys.forEach(k=>coalSelSet.add(k));
+      renderCoalChips();
+      updateCoal();
+    });
+    coalPresets.appendChild(b);
+  });
+  coalSel.addEventListener("change",()=>{
+    coalArea=coalSel.value;
+    coalSelSet.clear();
+    renderCoalChips();
+    updateCoal();
+    if(coalArea!=="de"){
+      paintMapSel(coalArea);
+      showMapDetail(coalArea);
+    }
+  });
+  renderCoalChips();
+  updateCoal();
+}
+
+function paintMapSel(key){
+  selectedState=key;
+  paintMap();
+}
+
+function renderCoalChips(){
+  const d=coalDataset();
+  coalChips.innerHTML="";
+  ORDER.forEach(k=>{
+    const v=d.vals[k];
+    const col=partyColor(k,v);
+    const b=document.createElement("button");
+    b.className="coal-chip";
+    b.dataset.k=k;
+    b.innerHTML=`<span class="sw" style="background:${partyColorStrict(k)}"></span>${PARTY[k].label}<span class="pc">${fmt(v)}&nbsp;%</span>`;
+    b.style.setProperty("--c",col);
+    const on=coalSelSet.has(k);
+    if(on)b.classList.add("on");
+    b.addEventListener("click",()=>{
+      if(coalSelSet.has(k))coalSelSet.delete(k);else coalSelSet.add(k);
+      renderCoalChips();
+      updateCoal();
+    });
+    coalChips.appendChild(b);
+  });
+}
+
+function updateCoal(){
+  const d=coalDataset();
+  const sel=ORDER.filter(k=>coalSelSet.has(k));
+  const sum=sel.reduce((s,k)=>s+d.vals[k],0);
+  const majority=sum>50;
+  coalPct.innerHTML=fmt(sum)+"&nbsp;%";
+  coalBarFill.style.width=Math.min(100,sum/50*100)+"%";
+  coalVerdict.innerHTML=majority
+    ? `✓ Regierungsmehrheit`
+    : `✗ Keine Mehrheit`;
+  coalVerdict.className="coal-verdict "+(majority?"ok":"no");
+  const ssum=sel.reduce((s,k)=>s+d.seats[k],0);
+  const need=Math.floor(d.total/2)+1;
+  coalSeats.innerHTML=`<b>${ssum}</b> von ${d.total} Sitzen in der Koalition${ssum>=need?` · Mehrheit ab <b>${need}</b>`:""}`;
+  coalNote.innerHTML=`<b>${d.name}:</b> ${d.dataset}. ${d.note}`;
+  document.querySelectorAll(".preset").forEach(btn=>{
+    const pv=btn.querySelector(".pv");
+    const p=PRESETS[+btn.dataset.pi];
+    if(p&&pv){
+      const v=p.keys.reduce((s,k)=>s+d.vals[k],0);
+      pv.textContent=fmt(v)+" %";
+      pv.className="pv "+(v>50?"ok":"no");
+    }
+  });
+}
+
+/* ---------- CSS 3D bars ---------- */
+function buildBarChart(container,vals){
+  const maxV=Math.max(...ORDER.map(k=>vals[k]));
+  const items=ORDER.map(k=>({key:k,value:vals[k],color:partyColor(k,vals[k])}));
+  const scene=document.createElement("div");
+  scene.className="bc3d-persp";
+  scene.innerHTML=`<div class="bc3d-stage">
+      <div class="bc3d-floor"></div>
+      <div class="bc3d-bars"></div>
+    </div>`;
+  const bars=scene.querySelector(".bc3d-bars");
+  const n=items.length;
+  items.forEach((it,i)=>{
+    const h=Math.max(12,Math.round(it.value/maxV*150));
+    const top=lighter(it.color,.45),side=darker(it.color,.4);
+    const b=document.createElement("div");
+    b.className="bc3d-bar";
+    b.style.setProperty("--h",h+"px");
+    b.style.setProperty("--c",it.color);
+    b.style.setProperty("--cTop",top);
+    b.style.setProperty("--cSide",side);
+    b.style.left=`calc(${((i+0.5)/n)*100}% - 11px)`;
+    b.setAttribute("data-tip",PARTY[it.key].label+" · "+fmt(it.value)+" %");
+    b.style.transitionDelay=((i*0.05).toFixed(2))+"s";
+    b.innerHTML=`<span class="bc3d-front"></span><span class="bc3d-side"></span><span class="bc3d-top"></span>`;
+    bars.appendChild(b);
+  });
+  container.appendChild(scene);
+  return scene;
+}
+
+function buildStates(){
+  const grid=document.getElementById("statesGrid");
+  STATES.forEach(st=>{
+    const card=document.createElement("div");
+    card.className="card";
+    const entries=ORDER.map(k=>({k,v:st.vals[k]}));
+    const top=entries.reduce((a,b)=>b.v>a.v?b:a);
+    const topCol=partyColor(top.k,top.v);
+    card.innerHTML=`
+      <div class="card-head">
+        <h3>${st.name}</h3>
+        <span class="badge" style="background:${topCol}">${PARTY[top.k].label} ${fmt(top.v)}&nbsp;%</span>
+      </div>
+      <div class="card-body">
+        <div class="bc3d-scene"></div>
+        <div class="dlist"></div>
+      </div>`;
+    const body=card.querySelector(".card-body");
+    buildBarChart(body.querySelector(".bc3d-scene"),st.vals);
+    const dl=body.querySelector(".dlist");
+    dl.innerHTML=entries.map(({k,v})=>{
+      const col=partyColor(k,v);
+      const pct=Math.round(v/maxOf(st.vals)*100);
+      return `<div class="drow"><span class="sw" style="background:${col}"></span>
+        <span class="nm">${PARTY[k].label}</span>
+        <span class="vl">${fmt(v)}&nbsp;%</span>
+        <span class="mbar"><i style="--c:${col};width:${pct}%"></i></span></div>`;
+    }).join("");
+    grid.appendChild(card);
+  });
+  const io=new IntersectionObserver(es=>{
+    es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("grow");io.unobserve(e.target);}});
+  },{threshold:.18});
+  document.querySelectorAll(".bc3d-persp").forEach(s=>io.observe(s));
+}
+
+/* ---------- Live-Aktualisierung (Dawum-API) ---------- */
+const DAWUM_URL="https://api.dawum.de/newest_surveys.json";
+const DAWUM_PARLIAMENT="0";
+const DAWUM_CUTOFF_DAYS=90;
+const DAWUM_TRACKED={1:"cdu",2:"spd",4:"gru",7:"afd",5:"lin",23:"bsw",3:"fdp"};
+
+const MONTHS_DE=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+function fmtDateLong(iso){
+  const p=String(iso).split("-");
+  return `${+p[2]}. ${MONTHS_DE[+p[1]-1]} ${p[0]}`;
+}
+function fmtDateShort(iso){
+  const p=String(iso).split("-");
+  return p.length===3?`${p[2]}.${p[1]}.${p[0]}`:"–";
+}
+function isoDaysAgo(n){
+  const d=new Date();d.setUTCDate(d.getUTCDate()-n);
+  return d.toISOString().slice(0,10);
+}
+function deList(arr){
+  if(arr.length<=1)return arr.join("");
+  return arr.slice(0,-1).join(", ")+" und "+arr[arr.length-1];
+}
+
+const refreshBtn=document.getElementById("refreshBtn");
+const refreshLabel=document.getElementById("refreshLabel");
+const standChip=document.getElementById("standChip");
+const kpiTopVal=document.getElementById("kpiTopVal");
+const kpiTopNote=document.getElementById("kpiTopNote");
+const footerPoll=document.getElementById("footerPoll");
+
+function applyPrognose(avg,iso,institutes){
+  ORDER.forEach(k=>{NATIONAL.prognose[k]=avg[k]!==undefined?avg[k]:0;});
+  NATIONAL.prognose.sub=`Dawum-API · Durchschnitt aller Institute · Stand ${fmtDateShort(iso)}`;
+  const now=new Date();
+  standChip.innerHTML=`<span class="dot"></span><span>Stand: <b>${fmtDateLong(iso)}</b> · Sonntagsfrage (Dawum-API) · aktualisiert <b>${now.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr</b></span>`;
+  const top=ORDER.reduce((a,k)=>NATIONAL.prognose[k]>NATIONAL.prognose[a]?k:a,"cdu");
+  kpiTopVal.innerHTML=`${PARTY[top].label} <small>${fmt(NATIONAL.prognose[top])} %</small>`;
+  kpiTopNote.textContent=`Durchschnitt aus ${institutes} Instituten · Dawum · Stand ${fmtDateShort(iso)}`;
+  footerPoll.innerHTML=`<b>Dawum / Politmonitor</b> – Durchschnitt aller Institute (Sonntagsfrage), Stand <b>${fmtDateShort(iso)}</b>: ${ORDER.map(k=>`${PARTY[k].label} ${fmt(NATIONAL.prognose[k])} %`).join(" · ")}`;
+  buildLegend();
+  if(webglOk&&pieGroup){buildPie();}
+  else{buildFallback();}
+  updateCoal();
+  refreshBtn.title=`Zuletzt aktualisiert: ${now.toLocaleString("de-DE")} · ${institutes} Institute (Dawum-API)`;
+}
+
+async function refreshFromDawum(silent){
+  refreshBtn.disabled=true;
+  refreshBtn.classList.add("loading");
+  if(!silent)refreshLabel.textContent="Wird geladen…";
+  try{
+    const ctrl=new AbortController();
+    const to=setTimeout(()=>ctrl.abort(),15000);
+    const res=await fetch(DAWUM_URL,{signal:ctrl.signal,cache:"no-store"});
+    clearTimeout(to);
+    if(!res.ok)throw new Error("HTTP "+res.status);
+    const j=await res.json();
+    const surveys=Object.values(j.Surveys||{}).filter(s=>String(s.Parliament_ID)===DAWUM_PARLIAMENT);
+    const cutoff=isoDaysAgo(DAWUM_CUTOFF_DAYS);
+    const fresh=surveys.filter(s=>String(s.Date)>=cutoff);
+    if(!fresh.length)throw new Error("keine aktuellen Umfragen");
+    const iso=fresh.reduce((a,s)=>s.Date>a?s.Date:a,fresh[0].Date);
+    const sums={son:0},cnts={son:0};
+    fresh.forEach(s=>{
+      let son=0;
+      Object.entries(s.Results||{}).forEach(([pid,pct])=>{
+        const k=DAWUM_TRACKED[pid];
+        if(k){sums[k]=(sums[k]||0)+pct;cnts[k]=(cnts[k]||0)+1;}
+        else{son+=pct;}
+      });
+      sums.son+=son;cnts.son++;
+    });
+    const avg={};
+    Object.keys(sums).forEach(k=>{avg[k]=+(sums[k]/cnts[k]).toFixed(1);});
+    applyPrognose(avg,iso,fresh.length);
+    if(!silent){
+      refreshBtn.classList.add("ok");
+      refreshLabel.textContent="✓ Aktualisiert";
+    }
+  }catch(e){
+    if(!silent){
+      refreshBtn.classList.add("err");
+      refreshLabel.textContent="Fehler · Daten unverändert";
+      setTimeout(()=>{refreshBtn.classList.remove("err");refreshLabel.textContent="Erneut versuchen";},3000);
+    }
+    console.warn("Dawum-Abruf fehlgeschlagen:",e);
+  }finally{
+    refreshBtn.disabled=false;
+    refreshBtn.classList.remove("loading");
+    if(!silent){
+      setTimeout(()=>{refreshLabel.textContent="Jetzt aktualisieren";refreshBtn.classList.remove("ok");},2500);
+    }
+  }
+}
+refreshBtn.addEventListener("click",()=>refreshFromDawum(false));
+
+/* ---------- init ---------- */
+buildLegend();
+initPie();
+initMapPartySel();
+initMap();
+initCoal();
+buildStates();
+refreshFromDawum(true);
+setInterval(()=>refreshFromDawum(true),30*60*1000);
+</script>
+</body>
+</html>
