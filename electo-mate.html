@@ -434,7 +434,7 @@ function stateIsCurrent(key){
   const e=LANDTAG[key];
   if(!e||heuteISO()<e.termin) return false;
   const diff=Math.ceil((new Date(e.termin+"T00:00:00")-new Date())/(864e5));
-  return diff>=-14;
+  return diff>=-45;
 }
 function stateColor(key, value){
   if(!stateIsCurrent(key)) return grayscale(PARTY[key].color);
@@ -488,6 +488,13 @@ const LANDTAG = {
       quelle:"https://wahlergebnisse.sachsen-anhalt.de/wahlen/lt26/erg_land.html",
       liveUrl:"https://wahlergebnisse.sachsen-anhalt.de/wahlen/lt26/erg_land.html",
       ergebnis:{cdu:17.2, spd:9.3, gru:8.9, afd:43.8, lin:8.6, bsw:5.3, fdp:2.6, son:4.3}},
+  be:{name:"Berlin", termin:"2026-09-20", feststellung:"2026-10-10", sitze:147,
+      quelle:"https://www.wahlen-berlin.de/wahlen/Be2026/",
+      liveUrl:"https://www.wahlen-berlin.de/wahlen/Be2026/AFSPRAES/agh/index.html",
+      ergebnis:null,
+      fallback:{cdu:28.2, spd:18.4, gru:18.4, afd:9.1, lin:12.8, bsw:0, fdp:4.6, son:8.5,
+                quelle:"https://www.wahlen-berlin.de/wahlen/Be2023/AFSPRAES/agh/index.html",
+                feststellung:"2023-02-27", name:"Berlin (2023 Wdh.)"}},
   mv:{name:"Mecklenburg-Vorp.", termin:"2026-09-20", feststellung:"2026-10-14", sitze:79,
       quelle:"https://www.ndr.de/nachrichten/mecklenburg-vorpommern/landtagswahl/liveticker-wahl-mv-afd-laut-prognose-knapp-vor-spd,mvwahl-liveticker-100.html",
       liveUrl:"https://wahlen.mvnet.de/dateien/ergebnisse.2026/landtagswahl/html/l_abs_zweit.html",
@@ -543,13 +550,23 @@ function updateWahlKalenderChip(){
 
 function heuteISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function landtagAktiv(key){ const e=LANDTAG[key]; return !!e && heuteISO() >= e.termin; }
-function effektiveVals(key, fallback){ const e=LANDTAG[key]; if(e && heuteISO() >= e.termin && e.ergebnis) return e.ergebnis; return fallback; }
+function effektiveVals(key, fallback){
+  const e=LANDTAG[key];
+  if(e && heuteISO() >= e.termin){
+    if(e.ergebnis) return e.ergebnis;
+    if(e.fallback) return e.fallback;
+  }
+  return fallback;
+}
 function landtagQuelle(key){
   const e=LANDTAG[key];
-  if(e && heuteISO() >= e.termin && e.ergebnis){
-    const endgueltig = e.feststellung && heuteISO() >= e.feststellung;
-    const label = (endgueltig ? "Amtliches Endergebnis" : "Vorläufiges Ergebnis") + " Landtagswahl " + e.termin.split("-").reverse().join(".");
-    return {label, quelle:e.quelle, datum:e.feststellung||e.termin, status: endgueltig ? "amtlich" : "vorlaeufig"};
+  if(e && heuteISO() >= e.termin){
+    const quellen = e.ergebnis ? e : (e.fallback ? {...e, ergebnis:e.fallback, quelle:e.fallback.quelle, feststellung:e.fallback.feststellung, name:e.fallback.name} : null);
+    if(quellen){
+      const endgueltig = quellen.feststellung && heuteISO() >= quellen.feststellung;
+      const label = (endgueltig ? "Amtliches Endergebnis" : "Vorläufiges Ergebnis") + " " + (quellen.name||e.name) + " " + quellen.termin.split("-").reverse().join(".");
+      return {label, quelle:quellen.quelle, datum:quellen.feststellung||quellen.termin, status: endgueltig ? "amtlich" : "vorlaeufig"};
+    }
   }
   return {label:"Endgültiges Ergebnis Bundestagswahl 2025", quelle:"https://bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse.html", datum:"2025-02-23", status:"btw"};
 }
@@ -1232,17 +1249,11 @@ function applyPrognose(avg,iso,institutes){
     const nw=naechsteWahl();
     const t=nw.tage;
     const label=t===0?"HEUTE":t===1?"morgen":`in ${t} Tagen`;
-    standChip.innerHTML=`<span class="dot" style="background:var(--bad)"></span><span>Landtagswahl <b>${nw.name}</b> ${label} — Sonntagsfrage wird ausgeblendet</span>`;
-    document.querySelector(".national").style.opacity="0.35";
-    document.querySelector(".national").style.pointerEvents="none";
-    document.querySelector(".national").style.filter="grayscale(1)";
-    if(!document.getElementById("wahlHinweis")){
-      const box=document.createElement("div");
-      box.id="wahlHinweis";
-      box.style.cssText="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.85);color:#fff;padding:18px 28px;border-radius:12px;text-align:center;z-index:10;font-size:15px;line-height:1.6;border:1px solid var(--bad);max-width:420px;";
-      box.innerHTML=`<b style="font-size:18px">Landtagswahl ${nw.name}</b><br>${nw.termin.split("-").reverse().join(".")} — Ergebnisse werden hier angezeigt, sobald sie vorliegen.<br><small style="opacity:.7">Sonntagsfragen werden bis zur Wahl unterdrückt.</small>`;
-      document.querySelector(".national").appendChild(box);
-    }
+    standChip.innerHTML=`<span class="dot" style="background:var(--bad)"></span><span>Landtagswahl <b>${nw.name}</b> ${label} · Bund-Prognose läuft weiter</span>`;
+    document.querySelector(".national").style.opacity="";
+    document.querySelector(".national").style.pointerEvents="";
+    document.querySelector(".national").style.filter="";
+    const alt0=document.getElementById("wahlHinweis"); if(alt0) alt0.remove();
   }else{
     standChip.innerHTML=`<span class="dot"></span><span>Stand: <b>${fmtDateLong(iso)}</b> · Sonntagsfrage (Dawum-API) · aktualisiert <b>${now.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr</b></span>`;
     document.querySelector(".national").style.opacity="";
@@ -1252,8 +1263,8 @@ function applyPrognose(avg,iso,institutes){
   }
   const top=ORDER.reduce((a,k)=>NATIONAL.prognose[k]>NATIONAL.prognose[a]?k:a,"cdu");
   kpiTopVal.innerHTML=`${PARTY[top].label} <small>${fmt(NATIONAL.prognose[top])} %</small>`;
-  kpiTopNote.textContent=waehlNaehe?"Sonntagsfrage ausgeblendet — Landtagswahl steht an":`Durchschnitt aus ${institutes} Instituten · Dawum · Stand ${fmtDateShort(iso)}`;
-  footerPoll.innerHTML=waehlNaehe?"<i>Sonntagsfrage wird bis zur Landtagswahl nicht angezeigt.</i>":`<b>Dawum / Politmonitor</b> – Durchschnitt aller Institute (Sonntagsfrage), Stand <b>${fmtDateShort(iso)}</b>: ${ORDER.map(k=>`${PARTY[k].label} ${fmt(NATIONAL.prognose[k])} %`).join(" · ")}`;
+  kpiTopNote.textContent=`Durchschnitt aus ${institutes} Instituten · Dawum · Stand ${fmtDateShort(iso)}`;
+  footerPoll.innerHTML=`<b>Dawum / Politmonitor</b> – Durchschnitt aller Institute (Sonntagsfrage), Stand <b>${fmtDateShort(iso)}</b>: ${ORDER.map(k=>`${PARTY[k].label} ${fmt(NATIONAL.prognose[k])} %`).join(" · ")}`;
   buildLegend();
   if(webglOk&&pieGroup){buildPie();}
   else{buildFallback();}

@@ -436,7 +436,7 @@ function stateIsCurrent(key){
   const e=LANDTAG[key];
   if(!e||heuteISO()<e.termin) return false;
   const diff=Math.ceil((new Date(e.termin+"T00:00:00")-new Date())/(864e5));
-  return diff>=-14;
+  return diff>=-45;
 }
 function stateColor(key, value){
   if(!stateIsCurrent(key)) return grayscale(PARTY[key].color);
@@ -1300,18 +1300,11 @@ function applyPrognose(avg,iso,institutes){
     const nw=naechsteWahl();
     const t=nw.tage;
     const label=t===0?"HEUTE":t===1?"morgen":`in ${t} Tagen`;
-    standChip.innerHTML=`<span class="dot" style="background:var(--bad)"></span><span>Landtagswahl <b>${nw.name}</b> ${label} — Sonntagsfrage wird ausgeblendet</span>`;
-    document.querySelector(".national").style.opacity="0.35";
-    document.querySelector(".national").style.pointerEvents="none";
-    document.querySelector(".national").style.filter="grayscale(1)";
-    document.querySelector(".national").style.position="relative";
-    if(!document.getElementById("wahlHinweis")){
-      const box=document.createElement("div");
-      box.id="wahlHinweis";
-      box.style.cssText="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.85);color:#fff;padding:18px 28px;border-radius:12px;text-align:center;z-index:10;font-size:15px;line-height:1.6;border:1px solid var(--bad);max-width:420px;";
-      box.innerHTML=`<b style="font-size:18px">Landtagswahl ${nw.name}</b><br>${nw.termin.split("-").reverse().join(".")} — Ergebnisse werden hier angezeigt, sobald sie vorliegen.<br><small style="opacity:.7">Sonntagsfragen werden bis zur Wahl unterdrückt.</small>`;
-      document.querySelector(".national").appendChild(box);
-    }
+    standChip.innerHTML=`<span class="dot" style="background:var(--bad)"></span><span>Landtagswahl <b>${nw.name}</b> ${label} · Bund-Prognose läuft weiter</span>`;
+    document.querySelector(".national").style.opacity="";
+    document.querySelector(".national").style.pointerEvents="";
+    document.querySelector(".national").style.filter="";
+    const alt0=document.getElementById("wahlHinweis"); if(alt0) alt0.remove();
   }else{
     standChip.innerHTML=`<span class="dot"></span><span>Stand: <b>${fmtDateLong(iso)}</b> · Sonntagsfrage (Dawum-API) · aktualisiert <b>${now.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr</b></span>`;
     document.querySelector(".national").style.opacity="";
@@ -1321,8 +1314,8 @@ function applyPrognose(avg,iso,institutes){
   }
   const top=ORDER.reduce((a,k)=>NATIONAL.prognose[k]>NATIONAL.prognose[a]?k:a,"cdu");
   kpiTopVal.innerHTML=`${PARTY[top].label} <small>${fmt(NATIONAL.prognose[top])} %</small>`;
-  kpiTopNote.textContent=waehlNaehe?"Sonntagsfrage ausgeblendet — Landtagswahl steht an":`Durchschnitt aus ${institutes} Instituten · Dawum · Stand ${fmtDateShort(iso)}`;
-  footerPoll.innerHTML=waehlNaehe?"<i>Sonntagsfrage wird bis zur Landtagswahl nicht angezeigt.</i>":`<b>Dawum / Politmonitor</b> – Durchschnitt aller Institute (Sonntagsfrage), Stand <b>${fmtDateShort(iso)}</b>: ${ORDER.map(k=>`${PARTY[k].label} ${fmt(NATIONAL.prognose[k])} %`).join(" · ")}`;
+  kpiTopNote.textContent=`Durchschnitt aus ${institutes} Instituten · Dawum · Stand ${fmtDateShort(iso)}`;
+  footerPoll.innerHTML=`<b>Dawum / Politmonitor</b> – Durchschnitt aller Institute (Sonntagsfrage), Stand <b>${fmtDateShort(iso)}</b>: ${ORDER.map(k=>`${PARTY[k].label} ${fmt(NATIONAL.prognose[k])} %`).join(" · ")}`;
   buildLegend();
   if(webglOk&&pieGroup){buildPie();}
   else{buildFallback();}
