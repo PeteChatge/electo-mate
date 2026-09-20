@@ -541,7 +541,7 @@ function updateWahlKalenderChip(){
   chip.style.borderColor=t<=7?"var(--bad)":t<=14?"var(--gold)":"var(--accent)";
 }
 
-function heuteISO(){ return new Date().toISOString().slice(0,10); }
+function heuteISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function landtagAktiv(key){ const e=LANDTAG[key]; return !!e && heuteISO() >= e.termin; }
 function effektiveVals(key, fallback){ const e=LANDTAG[key]; if(e && heuteISO() >= e.termin && e.ergebnis) return e.ergebnis; return fallback; }
 function landtagQuelle(key){

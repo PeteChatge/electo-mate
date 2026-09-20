@@ -582,7 +582,7 @@ const LANDTAG = {
       ergebnis:{cdu:26.2, spd:29.8, gru:11.9, afd:0, lin:10.9, bsw:0, fdp:5.1, son:16.1}}
 };
 
-function heuteISO(){ return new Date().toISOString().slice(0,10); }
+function heuteISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function landtagAktiv(key){ const e=LANDTAG[key]; return !!e && heuteISO() >= e.termin; }
 function effektiveVals(key, fallback){
   const e=LANDTAG[key];
