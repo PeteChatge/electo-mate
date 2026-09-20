@@ -188,17 +188,17 @@ h1 .grad{background:linear-gradient(92deg,#e7ecf3 10%,#8fb4ff 55%,#6ec3ff 90%);-
 .drow .mbar i{display:block;height:100%;border-radius:99px;background:var(--c)}
 
 /* ---------- CSS 3D bars ---------- */
-.bc3d-persp{perspective:950px;position:absolute;inset:0;perspective-origin:50% 30%}
-.bc3d-stage{position:absolute;left:2px;right:2px;top:6px;bottom:0;transform-style:preserve-3d;transform:rotateX(22deg) rotateY(-8deg)}
-.bc3d-floor{position:absolute;left:6px;right:6px;bottom:4px;height:150px;transform-style:preserve-3d;transform:rotateX(90deg);transform-origin:bottom center;
-  background-image:linear-gradient(rgba(148,163,184,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.09) 1px,transparent 1px);
-  background-size:26px 26px;border-top:1px solid rgba(148,163,184,.25)}
-.bc3d-bars{position:absolute;left:0;right:0;bottom:4px;height:200px;transform-style:preserve-3d}
+.bc3d-persp{perspective:800px;position:absolute;inset:0;perspective-origin:50% 65%}
+.bc3d-stage{position:absolute;left:2px;right:2px;top:6px;bottom:0;transform-style:preserve-3d;transform:rotateX(-35deg) rotateY(18deg)}
+.bc3d-floor{position:absolute;left:6px;right:6px;bottom:4px;height:180px;transform-style:preserve-3d;transform:rotateX(90deg);transform-origin:bottom center;
+  background-image:linear-gradient(rgba(148,163,184,.11) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.11) 1px,transparent 1px);
+  background-size:26px 26px;border-top:1px solid rgba(148,163,184,.30)}
+.bc3d-bars{position:absolute;left:0;right:0;bottom:4px;height:220px;transform-style:preserve-3d}
 .bc3d-bar{position:absolute;bottom:0;width:22px;height:var(--h);transform-style:preserve-3d;transform:scaleY(0);transition:transform .75s cubic-bezier(.18,.7,.25,1)}
 .grow .bc3d-bar{transform:scaleY(1)}
-.bc3d-front{position:absolute;inset:0;background:linear-gradient(180deg,var(--cTop),var(--c));transform:translateZ(10px);box-shadow:inset 0 0 14px rgba(0,0,0,.30)}
-.bc3d-side{position:absolute;top:0;right:0;width:10px;height:100%;background:var(--cSide);transform:rotateY(-90deg);transform-origin:right center}
-.bc3d-top{position:absolute;top:0;left:0;width:100%;height:10px;background:var(--cTop);transform:rotateX(90deg);transform-origin:top center}
+.bc3d-front{position:absolute;inset:0;background:linear-gradient(180deg,var(--cTop),var(--c));transform:translateZ(11px);box-shadow:inset 0 0 14px rgba(0,0,0,.30), 0 0 18px rgba(0,0,0,.18)}
+.bc3d-side{position:absolute;top:0;right:0;width:11px;height:100%;background:var(--cSide);transform:rotateY(-90deg);transform-origin:right center}
+.bc3d-top{position:absolute;top:0;left:0;width:100%;height:11px;background:var(--cTop);transform:rotateX(90deg);transform-origin:top center}
 .bc3d-bar:hover .bc3d-front{filter:brightness(1.18)}
 .bc3d-bar::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(var(--h) + 6px);transform:translateX(-50%);background:rgba(10,14,22,.95);border:1px solid var(--border2);color:var(--text);font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;white-space:nowrap;opacity:0;transition:.15s;pointer-events:none;z-index:3}
 .bc3d-bar:hover::after{opacity:1}
