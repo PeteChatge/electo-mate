@@ -917,13 +917,16 @@ function paintMap(){
   Object.values(mapPaths).forEach(p=>{
     const st=STATES[MAP_ID_TO_STATE[p.dataset.st]];
     const vEff = valsOf(st);
+    const cur=stateIsCurrent(st.key);
     if(mapModeMode==="top"){
       const t=topParty(vEff);
-      p.style.fill=partyColor(t.k,t.v);
+      p.style.fill=cur ? stateColor(t.k,t.v) : grayscale("#8a93a3");
+      p.style.opacity=cur ? "1" : "0.4";
     }else{
       const v=vEff[selParty];
-      const a=0.16+0.84*(v/maxShare[selParty]);
-      p.style.fill=withAlpha(partyColorStrict(selParty),a);
+      const a=cur ? (0.16+0.84*(v/maxShare[selParty])) : 0.15;
+      p.style.fill=withAlpha(cur ? partyColorStrict(selParty) : "#8a93a3",a);
+      p.style.opacity=cur ? "1" : "0.4";
     }
     p.classList.toggle("sel",selectedState===st.key);
   });
@@ -1119,13 +1122,16 @@ function paintMapSel(key){
 function renderCoalChips(){
   const d=coalDataset();
   coalChips.innerHTML="";
+  const isState=coalArea!=="de";
+  const curState=isState && stateIsCurrent(coalArea);
   ORDER.forEach(k=>{
     const v=d.vals[k];
-    const col=partyColor(k,v);
+    const col=isState ? (curState ? stateColor(k,v) : grayscale("#8a93a3")) : partyColor(k,v);
     const b=document.createElement("button");
     b.className="coal-chip";
     b.dataset.k=k;
-    b.innerHTML=`<span class="sw" style="background:${partyColorStrict(k)}"></span>${PARTY[k].label}<span class="pc">${fmt(v)}&nbsp;%</span>`;
+    const dotCol=isState ? (curState ? stateColor(k,v) : grayscale(PARTY[k].color)) : partyColorStrict(k);
+    b.innerHTML=`<span class="sw" style="background:${dotCol}"></span>${PARTY[k].label}<span class="pc">${fmt(v)}&nbsp;%</span>`;
     b.style.setProperty("--c",col);
     const on=coalSelSet.has(k);
     if(on)b.classList.add("on");
@@ -1165,9 +1171,10 @@ function updateCoal(){
 }
 
 /* ---------- CSS 3D bars ---------- */
-function buildBarChart(container,vals){
+function buildBarChart(container,vals,stateKey){
   const maxV=Math.max(...ORDER.map(k=>vals[k]));
-  const items=ORDER.map(k=>({key:k,value:vals[k],color:partyColor(k,vals[k])}));
+  const useColor=stateKey ? (k,v)=>stateColor(k,v) : partyColor;
+  const items=ORDER.map(k=>({key:k,value:vals[k],color:useColor(k,vals[k])}));
   const scene=document.createElement("div");
   scene.className="bc3d-persp";
   scene.innerHTML=`<div class="bc3d-stage">
@@ -1205,7 +1212,7 @@ function buildStates(){
     card.className="card";
     const entries=ORDER.map(k=>({k,v:vEff[k]}));
     const top=entries.reduce((a,b)=>b.v>a.v?b:a);
-    const topCol=partyColor(top.k,top.v);
+    const topCol=stateColor(top.k,top.v);
     const quellKurz = q.status==="amtlich" ? "Landtag amtlich" : q.status==="vorlaeufig" ? "Landtag vorläufig" : "Bundestag 2025";
     card.innerHTML=`
       <div class="card-head">
@@ -1218,10 +1225,10 @@ function buildStates(){
         <div class="dlist"></div>
       </div>`;
     const body=card.querySelector(".card-body");
-    buildBarChart(body.querySelector(".bc3d-scene"),vEff);
+    buildBarChart(body.querySelector(".bc3d-scene"),vEff,st.key);
     const dl=body.querySelector(".dlist");
     dl.innerHTML=entries.map(({k,v})=>{
-      const col=partyColor(k,v);
+      const col=stateColor(k,v);
       const pct=Math.round(v/maxOf(vEff)*100);
       return `<div class="drow"><span class="sw" style="background:${col}"></span>
         <span class="nm">${PARTY[k].label}</span>

@@ -865,13 +865,16 @@ function paintMap(){
   Object.values(mapPaths).forEach(p=>{
     const st=STATES[MAP_ID_TO_STATE[p.dataset.st]];
     const vEff = valsOf(st);
+    const cur=stateIsCurrent(st.key);
     if(mapModeMode==="top"){
       const t=topParty(vEff);
-      p.style.fill=partyColor(t.k,t.v);
+      p.style.fill=cur ? stateColor(t.k,t.v) : grayscale("#8a93a3");
+      p.style.opacity=cur ? "1" : "0.4";
     }else{
       const v=vEff[selParty];
-      const a=0.16+0.84*(v/maxShare[selParty]);
-      p.style.fill=withAlpha(partyColorStrict(selParty),a);
+      const a=cur ? (0.16+0.84*(v/maxShare[selParty])) : 0.15;
+      p.style.fill=withAlpha(cur ? partyColorStrict(selParty) : "#8a93a3",a);
+      p.style.opacity=cur ? "1" : "0.4";
     }
     p.classList.toggle("sel",selectedState===st.key);
   });
@@ -1064,17 +1067,20 @@ function paintMapSel(key){
   paintMap();
 }
 
-function renderCoalChips(){
-  const d=coalDataset();
-  coalChips.innerHTML="";
-  ORDER.forEach(k=>{
-    const v=d.vals[k];
-    const col=partyColor(k,v);
-    const b=document.createElement("button");
-    b.className="coal-chip";
-    b.dataset.k=k;
-    b.innerHTML=`<span class="sw" style="background:${partyColorStrict(k)}"></span>${PARTY[k].label}<span class="pc">${fmt(v)}&nbsp;%</span>`;
-    b.style.setProperty("--c",col);
+  function renderCoalChips(){
+    const d=coalDataset();
+    coalChips.innerHTML="";
+    const isState=coalArea!=="de";
+    const curState=isState && stateIsCurrent(coalArea);
+    ORDER.forEach(k=>{
+      const v=d.vals[k];
+      const col=isState ? (curState ? stateColor(k,v) : grayscale("#8a93a3")) : partyColor(k,v);
+      const b=document.createElement("button");
+      b.className="coal-chip";
+      b.dataset.k=k;
+      const dotCol=isState ? (curState ? stateColor(k,v) : grayscale(PARTY[k].color)) : partyColorStrict(k);
+      b.innerHTML=`<span class="sw" style="background:${dotCol}"></span>${PARTY[k].label}<span class="pc">${fmt(v)}&nbsp;%</span>`;
+      b.style.setProperty("--c",col);
     const on=coalSelSet.has(k);
     if(on)b.classList.add("on");
     b.addEventListener("click",()=>{
