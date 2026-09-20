@@ -430,7 +430,8 @@ function partyColorStrict(key){
 function grayscale(hex){
   const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
   const avg=Math.round(0.299*r+0.587*g+0.114*b);
-  return `rgb(${avg},${avg},${avg})`;
+  const h=avg.toString(16).padStart(2,"0");
+  return `#${h}${h}${h}`;
 }
 function stateIsCurrent(key){
   const e=LANDTAG[key];
@@ -438,9 +439,9 @@ function stateIsCurrent(key){
   const diff=Math.ceil((new Date(e.termin+"T00:00:00")-new Date())/(864e5));
   return diff>=-45;
 }
-function stateColor(key, value){
-  if(!stateIsCurrent(key)) return grayscale(PARTY[key].color);
-  return partyColor(key, value);
+function stateColor(stateKey, partyKey, value){
+  if(!stateIsCurrent(stateKey)) return grayscale(PARTY[partyKey].color);
+  return partyColor(partyKey, value);
 }
 
 const NATIONAL = {
@@ -526,10 +527,11 @@ const LANDTAG = {
       ergebnis:{cdu:17.2, spd:9.3, gru:8.9, afd:43.8, lin:8.6, bsw:5.3, fdp:2.6, son:4.3}},
   /* --- HEUTE: 20.09.2026 --- */
   be:{name:"Berlin", termin:"2026-09-20", feststellung:"2026-10-10", sitze:147,
-      quelle:"https://www.wahlen-berlin.de/wahlen/Be2026/",
+      quelle:"https://www.rbb24.de/politik/berlin-wahl-2026/beitraege/berlin-wahl-agh-bvv-stimmen-ergebnis-reaktionen-liveticker.html",
       liveUrl:"https://www.wahlen-berlin.de/wahlen/Be2026/AFSPRAES/agh/index.html",
       nachwahl:{status:"Wiederholungswahl (nach 2021-Ungueltig)", quelle:"https://www.berlin.de/wahlen/"},
-      ergebnis:null,
+      /* 18:28-Hochrechnung (infratest dimap/ARD via rbb24) */
+      ergebnis:{cdu:20.0, spd:12.0, gru:15.0, afd:15.7, lin:24.8, bsw:5.0, fdp:2.4, son:5.1},
       /* Zwischenstand: gueltiges Ergebnis der letzten gueltigen Wahl (2023 Wiederholung) */
       fallback:{cdu:28.2, spd:18.4, gru:18.4, afd:9.1, lin:12.8, bsw:0, fdp:4.6, son:8.5,
                 quelle:"https://www.wahlen-berlin.de/wahlen/Be2023/AFSPRAES/agh/index.html",
@@ -920,7 +922,7 @@ function paintMap(){
     const cur=stateIsCurrent(st.key);
     if(mapModeMode==="top"){
       const t=topParty(vEff);
-      p.style.fill=cur ? stateColor(t.k,t.v) : grayscale("#8a93a3");
+      p.style.fill=cur ? stateColor(st.key,t.k,t.v) : grayscale("#8a93a3");
       p.style.opacity=cur ? "1" : "0.4";
     }else{
       const v=vEff[selParty];
@@ -954,9 +956,9 @@ function showMapDetail(stKey){
   const effSeats = landtagAktiv(st.key) ? LANDTAG[st.key].sitze : st.seats;
   const q = landtagQuelle(st.key);
   const t=topParty(vEff);
-  const tCol=stateColor(t.k,t.v);
+  const tCol=stateColor(stKey,t.k,t.v);
   const rows=ORDER.slice().sort((a,b)=>vEff[b]-vEff[a]).map(k=>{
-    const col=stateColor(k,vEff[k]);
+    const col=stateColor(stKey,k,vEff[k]);
     return `<div class="drow"><span class="sw" style="background:${col}"></span>
       <span class="nm">${PARTY[k].label}</span>
       <span class="vl">${fmt(vEff[k])}&nbsp;%</span>
@@ -980,7 +982,7 @@ function mapTooltip(stKey,e){
   const st=STATES.find(s=>s.key===stKey);
   const vEff=effektiveVals(st.key, st.vals);
   const rows=ORDER.slice().sort((a,b)=>vEff[b]-vEff[a]).map(k=>
-    `<div class="trow"><span class="sw" style="background:${stateColor(k,vEff[k])}"></span>
+    `<div class="trow"><span class="sw" style="background:${stateColor(stKey,k,vEff[k])}"></span>
      <span class="nm">${PARTY[k].label}</span><span class="vl">${fmt(vEff[k])}&nbsp;%</span></div>`).join("");
   const q=landtagQuelle(stKey);
   mapTip.innerHTML=`<div class="tname">${st.name}</div><div style="font-size:11px;color:var(--faint);margin-bottom:6px">${q.label}</div>${rows}`;
@@ -1126,11 +1128,11 @@ function renderCoalChips(){
   const curState=isState && stateIsCurrent(coalArea);
   ORDER.forEach(k=>{
     const v=d.vals[k];
-    const col=isState ? (curState ? stateColor(k,v) : grayscale("#8a93a3")) : partyColor(k,v);
+    const col=isState ? (curState ? stateColor(coalArea,k,v) : grayscale("#8a93a3")) : partyColor(k,v);
     const b=document.createElement("button");
     b.className="coal-chip";
     b.dataset.k=k;
-    const dotCol=isState ? (curState ? stateColor(k,v) : grayscale(PARTY[k].color)) : partyColorStrict(k);
+    const dotCol=isState ? (curState ? stateColor(coalArea,k,v) : grayscale(PARTY[k].color)) : partyColorStrict(k);
     b.innerHTML=`<span class="sw" style="background:${dotCol}"></span>${PARTY[k].label}<span class="pc">${fmt(v)}&nbsp;%</span>`;
     b.style.setProperty("--c",col);
     const on=coalSelSet.has(k);
@@ -1173,7 +1175,7 @@ function updateCoal(){
 /* ---------- CSS 3D bars ---------- */
 function buildBarChart(container,vals,stateKey){
   const maxV=Math.max(...ORDER.map(k=>vals[k]));
-  const useColor=stateKey ? (k,v)=>stateColor(k,v) : partyColor;
+  const useColor=stateKey ? (k,v)=>stateColor(stateKey,k,v) : partyColor;
   const items=ORDER.map(k=>({key:k,value:vals[k],color:useColor(k,vals[k])}));
   const scene=document.createElement("div");
   scene.className="bc3d-persp";
@@ -1212,7 +1214,7 @@ function buildStates(){
     card.className="card";
     const entries=ORDER.map(k=>({k,v:vEff[k]}));
     const top=entries.reduce((a,b)=>b.v>a.v?b:a);
-    const topCol=stateColor(top.k,top.v);
+    const topCol=stateColor(st.key,top.k,top.v);
     const quellKurz = q.status==="amtlich" ? "Landtag amtlich" : q.status==="vorlaeufig" ? "Landtag vorläufig" : "Bundestag 2025";
     card.innerHTML=`
       <div class="card-head">
@@ -1228,7 +1230,7 @@ function buildStates(){
     buildBarChart(body.querySelector(".bc3d-scene"),vEff,st.key);
     const dl=body.querySelector(".dlist");
     dl.innerHTML=entries.map(({k,v})=>{
-      const col=stateColor(k,v);
+      const col=stateColor(st.key,k,v);
       const pct=Math.round(v/maxOf(vEff)*100);
       return `<div class="drow"><span class="sw" style="background:${col}"></span>
         <span class="nm">${PARTY[k].label}</span>
