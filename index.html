@@ -78,7 +78,7 @@ h1 .grad{background:linear-gradient(92deg,#e7ecf3 10%,#8fb4ff 55%,#6ec3ff 90%);-
 .sec-head .hint{color:var(--muted);font-size:13px;margin-left:auto;text-align:right}
 
 /* ---------- National ---------- */
-.national{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr);gap:22px;margin-bottom:50px;align-items:stretch}
+.national{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr);gap:22px;margin-bottom:50px;align-items:stretch;position:relative}
 .panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px;padding:22px;position:relative}
 .panel-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
 .panel-title h3{font-size:16px;font-weight:700}
@@ -226,7 +226,7 @@ footer a:hover{text-decoration:underline}
     <p class="sub">Wahlbarometer &amp; Wahlauswertung: Sonntagsfrage für den Bund (live), amtlich ausgezählte Landtagsergebnisse nach Stichtag für die Länder, 3D-Sitzverteilung, Deutschlandkarte und Koalitions-Simulator für Bund und alle 16 Länder.</p>
     <div class="chips">
       <span class="chip" id="standChip"><span class="dot"></span><span>Stand: <b>11. August 2026</b> · Sonntagsfrage (Dawum / Wahlrecht.de)</span></span>
-      <span class="chip">Offiziell: <b>Bundeswahlleiterin</b> · Bundestagswahl 2025</span>
+      <span class="chip" id="wahlKalenderChip"></span>
       <span class="chip">Nächste Bundestagswahl: <b>voraussichtl. 2029</b></span>
       <button id="refreshBtn" class="refresh-btn" type="button" title="Aktuelle Sonntagsfrage von der Dawum-API (dawum.de) laden">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -427,6 +427,21 @@ function partyColor(key, value){
 function partyColorStrict(key){
   return PARTY[key].color;
 }
+function grayscale(hex){
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  const avg=Math.round(0.299*r+0.587*g+0.114*b);
+  return `rgb(${avg},${avg},${avg})`;
+}
+function stateIsCurrent(key){
+  const e=LANDTAG[key];
+  if(!e||heuteISO()<e.termin) return false;
+  const diff=Math.ceil((new Date(e.termin+"T00:00:00")-new Date())/(864e5));
+  return diff>=-14;
+}
+function stateColor(key, value){
+  if(!stateIsCurrent(key)) return grayscale(PARTY[key].color);
+  return partyColor(key, value);
+}
 
 const NATIONAL = {
   prognose:{
@@ -463,6 +478,38 @@ const MAP_ID_TO_STATE = {bw:0,by:1,be:2,bb:3,hb:4,hh:5,he:6,mv:7,ni:8,nw:9,rp:10
 
 /* ---------- Landtagswahl-Stichtage: nach Termin -> amtliche Auszählung ---------- */
 /*  nachwahl: {status, quelle} fuer Nachzaehlungen/Wiederholungen              */
+/*  wahlKalender: alle kommenden Wahlen, Suppression der Sonntagsfrage          */
+const WAHLKALENDER = [
+  {key:"st", name:"Sachsen-Anhalt",   termin:"2026-09-06"},
+  {key:"be", name:"Berlin",           termin:"2026-09-20"},
+  {key:"mv", name:"Mecklenburg-Vorp.",termin:"2026-09-20"},
+  {key:"sl", name:"Saarland",         termin:"2027-04-18"},
+  {key:"sh", name:"Schleswig-Holstein",termin:"2027-04-18"},
+  {key:"nw", name:"Nordrhein-Westfalen",termin:"2027-04-25"},
+  {key:"hb", name:"Bremen",           termin:"2027-05-30"},
+  {key:"ni", name:"Niedersachsen",    termin:"2027-10-26"},
+  {key:"by", name:"Bayern",           termin:"2028-10-08"},
+  {key:"he", name:"Hessen",           termin:"2028-10-08"},
+  {key:"bb", name:"Brandenburg",      termin:"2029-09-22"},
+  {key:"sn", name:"Sachsen",          termin:"2029-09-01"},
+  {key:"th", name:"Thüringen",        termin:"2029-09-01"},
+  {key:"hh", name:"Hamburg",          termin:"2030-03-01"},
+  {key:"bw", name:"Baden-Württemberg",termin:"2031-03-15"},
+  {key:"rp", name:"Rheinland-Pfalz",  termin:"2031-03-15"}
+];
+function tageBisWahl(key){
+  const e=WAHLKALENDER.find(w=>w.key===key);
+  if(!e) return Infinity;
+  return Math.ceil((new Date(e.termin+"T00:00:00")-new Date())/(864e5));
+}
+function naechsteWahl(){
+  let best=null, bestT=Infinity;
+  WAHLKALENDER.forEach(w=>{
+    const t=tageBisWahl(w.key);
+    if(t>=0 && t<bestT){bestT=t;best=w;}
+  });
+  return best?{...best,tage:bestT}:null;
+}
 const LANDTAG = {
   bw:{name:"Baden-W\u00fcrttemberg", termin:"2026-03-08", feststellung:"2026-03-27", sitze:157,
       quelle:"https://www.landtag-bw.de/de/aktuelles/themen/landtagswahl-2026",
@@ -488,12 +535,10 @@ const LANDTAG = {
                 quelle:"https://www.wahlen-berlin.de/wahlen/Be2023/AFSPRAES/agh/index.html",
                 feststellung:"2023-02-27", name:"Berlin (2023 Wdh.)"}},
   mv:{name:"Mecklenburg-Vorp.", termin:"2026-09-20", feststellung:"2026-10-14", sitze:79,
-      quelle:"https://www.laiv-mv.de/Wahlen/Landtagswahlen/2026/",
+      quelle:"https://www.ndr.de/nachrichten/mecklenburg-vorpommern/landtagswahl/liveticker-wahl-mv-afd-laut-prognose-knapp-vor-spd,mvwahl-liveticker-100.html",
       liveUrl:"https://wahlen.mvnet.de/dateien/ergebnisse.2026/landtagswahl/html/l_abs_zweit.html",
-      nachwahl:null, ergebnis:null,
-      fallback:{cdu:13.3, spd:39.6, gru:6.3, afd:16.7, lin:9.9, bsw:0, fdp:5.8, son:8.4,
-                quelle:"https://www.laiv-mv.de/Wahlen/Landtagswahlen/2021/",
-                feststellung:"2021-10-14", name:"Mecklenburg-Vorp. (2021)"}},
+      nachwahl:null,
+      ergebnis:{cdu:5.5, spd:35.5, gru:5.5, afd:37.0, lin:7.5, bsw:5.0, fdp:0, son:4.0}},
   /* --- bereits abgeschlossen --- */
   by:{name:"Bayern", termin:"2023-10-08", feststellung:"2023-10-24", sitze:203,
       quelle:"https://www.statistik.bayern.de/mam/wahlen/landtagswahlen/",
@@ -906,9 +951,9 @@ function showMapDetail(stKey){
   const effSeats = landtagAktiv(st.key) ? LANDTAG[st.key].sitze : st.seats;
   const q = landtagQuelle(st.key);
   const t=topParty(vEff);
-  const tCol=partyColor(t.k,t.v);
+  const tCol=stateColor(t.k,t.v);
   const rows=ORDER.slice().sort((a,b)=>vEff[b]-vEff[a]).map(k=>{
-    const col=partyColor(k,vEff[k]);
+    const col=stateColor(k,vEff[k]);
     return `<div class="drow"><span class="sw" style="background:${col}"></span>
       <span class="nm">${PARTY[k].label}</span>
       <span class="vl">${fmt(vEff[k])}&nbsp;%</span>
@@ -932,7 +977,7 @@ function mapTooltip(stKey,e){
   const st=STATES.find(s=>s.key===stKey);
   const vEff=effektiveVals(st.key, st.vals);
   const rows=ORDER.slice().sort((a,b)=>vEff[b]-vEff[a]).map(k=>
-    `<div class="trow"><span class="sw" style="background:${partyColor(k,vEff[k])}"></span>
+    `<div class="trow"><span class="sw" style="background:${stateColor(k,vEff[k])}"></span>
      <span class="nm">${PARTY[k].label}</span><span class="vl">${fmt(vEff[k])}&nbsp;%</span></div>`).join("");
   const q=landtagQuelle(stKey);
   mapTip.innerHTML=`<div class="tname">${st.name}</div><div style="font-size:11px;color:var(--faint);margin-bottom:6px">${q.label}</div>${rows}`;
@@ -1222,15 +1267,55 @@ const kpiTopVal=document.getElementById("kpiTopVal");
 const kpiTopNote=document.getElementById("kpiTopNote");
 const footerPoll=document.getElementById("footerPoll");
 
+function updateWahlKalenderChip(){
+  const chip=document.getElementById("wahlKalenderChip");
+  if(!chip) return;
+  const nw=naechsteWahl();
+  if(!nw){chip.style.display="none";return;}
+  const t=nw.tage;
+  const label=t===0?"HEUTE":t===1?"morgen":t+" Tage";
+  chip.innerHTML=`Nächste Wahl: <b>${nw.name}</b> · ${label} (${nw.termin.split("-").reverse().join(".")})`;
+  chip.style.display="";
+  chip.style.borderColor=t<=7?"var(--bad)":t<=14?"var(--gold)":"var(--accent)";
+}
+
+function wahlAktiv(){
+  return WAHLKALENDER.some(w=>{const t=tageBisWahl(w.key); return t>=0 && t<=28;});
+}
+
 function applyPrognose(avg,iso,institutes){
   ORDER.forEach(k=>{NATIONAL.prognose[k]=avg[k]!==undefined?avg[k]:0;});
   NATIONAL.prognose.sub=`Dawum-API · Durchschnitt aller Institute · Stand ${fmtDateShort(iso)}`;
   const now=new Date();
-  standChip.innerHTML=`<span class="dot"></span><span>Stand: <b>${fmtDateLong(iso)}</b> · Sonntagsfrage (Dawum-API) · aktualisiert <b>${now.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr</b></span>`;
+  updateWahlKalenderChip();
+  const waehlNaehe=wahlAktiv();
+  if(waehlNaehe){
+    const nw=naechsteWahl();
+    const t=nw.tage;
+    const label=t===0?"HEUTE":t===1?"morgen":`in ${t} Tagen`;
+    standChip.innerHTML=`<span class="dot" style="background:var(--bad)"></span><span>Landtagswahl <b>${nw.name}</b> ${label} — Sonntagsfrage wird ausgeblendet</span>`;
+    document.querySelector(".national").style.opacity="0.35";
+    document.querySelector(".national").style.pointerEvents="none";
+    document.querySelector(".national").style.filter="grayscale(1)";
+    document.querySelector(".national").style.position="relative";
+    if(!document.getElementById("wahlHinweis")){
+      const box=document.createElement("div");
+      box.id="wahlHinweis";
+      box.style.cssText="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.85);color:#fff;padding:18px 28px;border-radius:12px;text-align:center;z-index:10;font-size:15px;line-height:1.6;border:1px solid var(--bad);max-width:420px;";
+      box.innerHTML=`<b style="font-size:18px">Landtagswahl ${nw.name}</b><br>${nw.termin.split("-").reverse().join(".")} — Ergebnisse werden hier angezeigt, sobald sie vorliegen.<br><small style="opacity:.7">Sonntagsfragen werden bis zur Wahl unterdrückt.</small>`;
+      document.querySelector(".national").appendChild(box);
+    }
+  }else{
+    standChip.innerHTML=`<span class="dot"></span><span>Stand: <b>${fmtDateLong(iso)}</b> · Sonntagsfrage (Dawum-API) · aktualisiert <b>${now.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr</b></span>`;
+    document.querySelector(".national").style.opacity="";
+    document.querySelector(".national").style.pointerEvents="";
+    document.querySelector(".national").style.filter="";
+    const alt=document.getElementById("wahlHinweis"); if(alt) alt.remove();
+  }
   const top=ORDER.reduce((a,k)=>NATIONAL.prognose[k]>NATIONAL.prognose[a]?k:a,"cdu");
   kpiTopVal.innerHTML=`${PARTY[top].label} <small>${fmt(NATIONAL.prognose[top])} %</small>`;
-  kpiTopNote.textContent=`Durchschnitt aus ${institutes} Instituten · Dawum · Stand ${fmtDateShort(iso)}`;
-  footerPoll.innerHTML=`<b>Dawum / Politmonitor</b> – Durchschnitt aller Institute (Sonntagsfrage), Stand <b>${fmtDateShort(iso)}</b>: ${ORDER.map(k=>`${PARTY[k].label} ${fmt(NATIONAL.prognose[k])} %`).join(" · ")}`;
+  kpiTopNote.textContent=waehlNaehe?"Sonntagsfrage ausgeblendet — Landtagswahl steht an":`Durchschnitt aus ${institutes} Instituten · Dawum · Stand ${fmtDateShort(iso)}`;
+  footerPoll.innerHTML=waehlNaehe?"<i>Sonntagsfrage wird bis zur Landtagswahl nicht angezeigt.</i>":`<b>Dawum / Politmonitor</b> – Durchschnitt aller Institute (Sonntagsfrage), Stand <b>${fmtDateShort(iso)}</b>: ${ORDER.map(k=>`${PARTY[k].label} ${fmt(NATIONAL.prognose[k])} %`).join(" · ")}`;
   buildLegend();
   if(webglOk&&pieGroup){buildPie();}
   else{buildFallback();}
@@ -1342,8 +1427,9 @@ initMapPartySel();
 initMap();
 initCoal();
 buildStates();
+updateWahlKalenderChip();
 refreshFromDawum(true);
-setInterval(()=>refreshFromDawum(true),30*60*1000);
+setInterval(()=>{refreshFromDawum(true);updateWahlKalenderChip();},30*60*1000);
 </script>
 </body>
 </html>
