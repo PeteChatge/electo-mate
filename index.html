@@ -188,8 +188,8 @@ h1 .grad{background:linear-gradient(92deg,#e7ecf3 10%,#8fb4ff 55%,#6ec3ff 90%);-
 .drow .mbar i{display:block;height:100%;border-radius:99px;background:var(--c)}
 
 /* ---------- CSS 3D bars ---------- */
-.bc3d-persp{perspective:950px;position:absolute;inset:0}
-.bc3d-stage{position:absolute;left:2px;right:2px;top:6px;bottom:0;transform-style:preserve-3d;transform:rotateX(58deg)}
+.bc3d-persp{perspective:950px;position:absolute;inset:0;perspective-origin:50% 30%}
+.bc3d-stage{position:absolute;left:2px;right:2px;top:6px;bottom:0;transform-style:preserve-3d;transform:rotateX(22deg) rotateY(-8deg)}
 .bc3d-floor{position:absolute;left:6px;right:6px;bottom:4px;height:150px;transform-style:preserve-3d;transform:rotateX(90deg);transform-origin:bottom center;
   background-image:linear-gradient(rgba(148,163,184,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.09) 1px,transparent 1px);
   background-size:26px 26px;border-top:1px solid rgba(148,163,184,.25)}
@@ -359,7 +359,7 @@ footer a:hover{text-decoration:underline}
       <span class="hint">Bundestag 2025 / Landtag amtlich nach Stichtag</span>
     </div>
     <div class="note-box inline" id="laenderHinweis">
-      <b>Wahlauswertung:</b> Nach dem jeweiligen Wahl-Stichtag zeigt ein Land das <b>amtlich ausgezählte Ergebnis seiner Landtagswahl</b> (Quelle: Landeswahlleiterin). Vor dem Stichtag wird das <b>offizielle Zweitstimmen-Ergebnis der Bundestagswahl 2025</b> je Land angezeigt (Bundeswahlleiterin). Länder mit Stichtag 2026: <b>Baden-Württemberg (08.03.2026)</b>, <b>Rheinland-Pfalz (22.03.2026)</b>, <b>Sachsen-Anhalt (06.09.2026 – Auszählung live)</b>. Parteien unter 5 % werden einheitlich <b>grau</b> dargestellt. Der Aktualisieren-Button lädt für die Sachsen-Anhalt-Auszählung live nach.
+      <b>Wahlauswertung:</b> Nach dem jeweiligen Wahl-Stichtag zeigt ein Land das <b>amtlich ausgezählte Ergebnis seiner Landtagswahl</b> (Quelle: Landeswahlleiterin). Vor dem Stichtag wird das <b>offizielle Zweitstimmen-Ergebnis der Bundestagswahl 2025</b> je Land angezeigt (Bundeswahlleiterin). Alle 16 Bundesländer mit aktuellen Landtag-Ergebnissen. Parteien unter 5 % werden einheitlich <b>grau</b> dargestellt. Nachwahlen, Nachzählungen und Wahlwiederholungen werden priorisiert eingepflegt.
     </div>
     <div class="states" id="statesGrid"></div>
   </section>
@@ -370,9 +370,11 @@ footer a:hover{text-decoration:underline}
       <ul>
         <li><b>Die Bundeswahlleiterin</b> – Endgültiges Ergebnis der Bundestagswahl 2025 (Zweitstimmen &amp; Sitzverteilung, Bund &amp; Länder)</li>
         <li><a href="https://bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse.html">bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse.html</a></li>
-        <li><b>Landeswahlleiter BW</b> – Landtagswahl 08.03.2026: <a href="https://www.landtag-bw.de/de/aktuelles/themen/landtagswahl-2026">landtag-bw.de/landtagswahl-2026</a></li>
+        <li><b>Landeswahlleiter BW</b> – Landtagswahl 08.03.2026: <a href="https://www.landtag-bw.de/de/aktuelles/themen/landtagswahl-2026">landtag-bw.de</a></li>
         <li><b>Landeswahlleiter RLP</b> – Landtagswahl 22.03.2026: <a href="https://www.wahlen.rlp.de/landtagswahl/ergebnisse">wahlen.rlp.de</a></li>
-        <li><b>Landeswahlleiter ST</b> – Landtagswahl 06.09.2026 (live): <a href="https://wahlergebnisse.sachsen-anhalt.de/wahlen/lt26/erg_land.html">wahlergebnisse.sachsen-anhalt.de</a></li>
+        <li><b>Landeswahlleiter ST</b> – Landtagswahl 06.09.2026: <a href="https://wahlergebnisse.sachsen-anhalt.de/wahlen/lt26/erg_land.html">wahlergebnisse.sachsen-anhalt.de</a></li>
+        <li><b>Landeswahlleiter BE</b> – Abgeordnetenhaus-Wahl 20.09.2026 (Wiederholung): <a href="https://www.wahlen-berlin.de/wahlen/Be2026/">wahlen-berlin.de</a></li>
+        <li><b>Landeswahlleiter MV</b> – Landtagswahl 20.09.2026: <a href="https://www.laiv-mv.de/Wahlen/Landtagswahlen/2026/">laiv-mv.de</a></li>
         <li><b>Deutscher Bundestag</b> – Sitzverteilung im 21. Bundestag</li>
       </ul>
     </div>
@@ -460,30 +462,101 @@ const STATES = [
 const MAP_ID_TO_STATE = {bw:0,by:1,be:2,bb:3,hb:4,hh:5,he:6,mv:7,ni:8,nw:9,rp:10,sl:11,sn:12,st:13,sh:14,th:15};
 
 /* ---------- Landtagswahl-Stichtage: nach Termin -> amtliche Auszählung ---------- */
+/*  nachwahl: {status, quelle} fuer Nachzaehlungen/Wiederholungen              */
 const LANDTAG = {
-  bw:{name:"Baden-Württemberg", termin:"2026-03-08", feststellung:"2026-03-27", sitze:157,
+  bw:{name:"Baden-W\u00fcrttemberg", termin:"2026-03-08", feststellung:"2026-03-27", sitze:157,
       quelle:"https://www.landtag-bw.de/de/aktuelles/themen/landtagswahl-2026",
-      liveUrl:null,
+      liveUrl:null, nachwahl:null,
       ergebnis:{cdu:29.7, spd:5.5, gru:30.2, afd:18.8, lin:2.8, bsw:3.1, fdp:4.4, son:5.5}},
   rp:{name:"Rheinland-Pfalz", termin:"2026-03-22", feststellung:"2026-04-02", sitze:101,
       quelle:"https://www.wahlen.rlp.de/landtagswahl/ergebnisse",
-      liveUrl:null,
+      liveUrl:null, nachwahl:null,
       ergebnis:{cdu:25.9, spd:31.0, gru:7.9, afd:19.5, lin:4.2, bsw:3.8, fdp:2.1, son:5.6}},
   st:{name:"Sachsen-Anhalt", termin:"2026-09-06", feststellung:"2026-09-19", sitze:83,
       quelle:"https://wahlergebnisse.sachsen-anhalt.de/wahlen/lt26/erg_land.html",
       liveUrl:"https://wahlergebnisse.sachsen-anhalt.de/wahlen/lt26/erg_land.html",
-      ergebnis:{cdu:17.2, spd:9.3, gru:8.9, afd:43.8, lin:8.6, bsw:5.3, fdp:2.6, son:4.3}}
+      nachwahl:null,
+      ergebnis:{cdu:17.2, spd:9.3, gru:8.9, afd:43.8, lin:8.6, bsw:5.3, fdp:2.6, son:4.3}},
+  /* --- HEUTE: 20.09.2026 --- */
+  be:{name:"Berlin", termin:"2026-09-20", feststellung:"2026-10-10", sitze:147,
+      quelle:"https://www.wahlen-berlin.de/wahlen/Be2026/",
+      liveUrl:"https://www.wahlen-berlin.de/wahlen/Be2026/AFSPRAES/agh/index.html",
+      nachwahl:{status:"Wiederholungswahl (nach 2021-Ungueltig)", quelle:"https://www.berlin.de/wahlen/"},
+      ergebnis:null,
+      /* Zwischenstand: gueltiges Ergebnis der letzten gueltigen Wahl (2023 Wiederholung) */
+      fallback:{cdu:28.2, spd:18.4, gru:18.4, afd:9.1, lin:12.8, bsw:0, fdp:4.6, son:8.5,
+                quelle:"https://www.wahlen-berlin.de/wahlen/Be2023/AFSPRAES/agh/index.html",
+                feststellung:"2023-02-27", name:"Berlin (2023 Wdh.)"}},
+  mv:{name:"Mecklenburg-Vorp.", termin:"2026-09-20", feststellung:"2026-10-14", sitze:79,
+      quelle:"https://www.laiv-mv.de/Wahlen/Landtagswahlen/2026/",
+      liveUrl:"https://wahlen.mvnet.de/dateien/ergebnisse.2026/landtagswahl/html/l_abs_zweit.html",
+      nachwahl:null, ergebnis:null,
+      fallback:{cdu:13.3, spd:39.6, gru:6.3, afd:16.7, lin:9.9, bsw:0, fdp:5.8, son:8.4,
+                quelle:"https://www.laiv-mv.de/Wahlen/Landtagswahlen/2021/",
+                feststellung:"2021-10-14", name:"Mecklenburg-Vorp. (2021)"}},
+  /* --- bereits abgeschlossen --- */
+  by:{name:"Bayern", termin:"2023-10-08", feststellung:"2023-10-24", sitze:203,
+      quelle:"https://www.statistik.bayern.de/mam/wahlen/landtagswahlen/",
+      liveUrl:null, nachwahl:null,
+      ergebnis:{cdu:37.0, spd:8.4, gru:14.4, afd:14.6, lin:1.5, bsw:0, fdp:3.0, son:21.1}},
+  hh:{name:"Hamburg", termin:"2025-03-02", feststellung:"2025-03-19", sitze:121,
+      quelle:"https://www.wahlen-hamburg.de/B%C3%BCrgerschaftswahl_2025/ergebnisse.html",
+      liveUrl:null, nachwahl:null,
+      ergebnis:{cdu:19.8, spd:33.5, gru:18.5, afd:7.5, lin:11.2, bsw:1.8, fdp:2.3, son:5.4}},
+  ni:{name:"Niedersachsen", termin:"2022-10-09", feststellung:"2022-10-26", sitze:146,
+      quelle:"https://landeswahlleiter.niedersachsen.de/startseite/wahlen/landtagswahl/landtagswahl_2022/",
+      liveUrl:null, nachwahl:null,
+      ergebnis:{cdu:33.6, spd:36.9, gru:14.5, afd:8.2, lin:6.9, bsw:0, fdp:4.7, son:5.2}},
+  nw:{name:"Nordrhein-Westfalen", termin:"2027-04-25", feststellung:null, sitze:199,
+      quelle:"https://www.landtag.nrw.de/home/startseite.html",
+      liveUrl:null, nachwahl:null,
+      ergebnis:null},
+  sl:{name:"Saarland", termin:"2022-03-27", feststellung:"2022-04-12", sitze:51,
+      quelle:"https://wahlergebnis.saarland.de/LTW/ergebnisse.html",
+      liveUrl:null, nachwahl:null,
+      ergebnis:{cdu:28.5, spd:43.5, gru:5.0, afd:5.7, lin:2.6, bsw:0, fdp:4.8, son:9.9}},
+  sn:{name:"Sachsen", termin:"2024-09-01", feststellung:"2024-09-19", sitze:120,
+      quelle:"https://www.wahlen.sachsen.de/landtagswahl-2024-wahlergebnisse.php",
+      liveUrl:null, nachwahl:null,
+      ergebnis:{cdu:31.9, spd:7.3, gru:5.1, afd:30.6, lin:4.5, bsw:11.8, fdp:0.9, son:7.9}},
+  sh:{name:"Schleswig-Holstein", termin:"2022-05-08", feststellung:"2022-05-25", sitze:69,
+      quelle:"https://www.statistik-nord.de/fileadmin/wahlen/sh/ltw22/ergebnispraesentation.html",
+      liveUrl:null, nachwahl:null,
+      ergebnis:{cdu:43.4, spd:16.0, gru:18.3, afd:4.4, lin:1.7, bsw:0, fdp:6.4, son:9.8}},
+  th:{name:"Th\u00fcringen", termin:"2024-09-01", feststellung:"2024-09-12", sitze:88,
+      quelle:"https://wahlen.thueringen.de/datenbank/wahl1/wahl.asp?wahlart=LW&wJahr=2024&zeigeErg=LAND",
+      liveUrl:null, nachwahl:null,
+      ergebnis:{cdu:23.6, spd:6.1, gru:5.2, afd:32.8, lin:13.1, bsw:15.8, fdp:5.0, son:8.4}},
+  bb:{name:"Brandenburg", termin:"2024-09-22", feststellung:"2024-10-08", sitze:88,
+      quelle:"https://wahlergebnisse.brandenburg.de/12/500/20240922/landtagswahl_land/",
+      liveUrl:null, nachwahl:null,
+      ergebnis:{cdu:12.1, spd:30.9, gru:4.1, afd:29.2, lin:3.0, bsw:13.5, fdp:0.8, son:6.4}},
+  hb:{name:"Bremen", termin:"2023-05-14", feststellung:"2023-06-01", sitze:87,
+      quelle:"https://www.statistik-bremen.de/sixcms/media.php/13/Statistische%20Mitteilungen_126_pdfa_Auflage2.pdf",
+      liveUrl:null, nachwahl:null,
+      ergebnis:{cdu:26.2, spd:29.8, gru:11.9, afd:0, lin:10.9, bsw:0, fdp:5.1, son:16.1}}
 };
 
 function heuteISO(){ return new Date().toISOString().slice(0,10); }
 function landtagAktiv(key){ const e=LANDTAG[key]; return !!e && heuteISO() >= e.termin; }
-function effektiveVals(key, fallback){ const e=LANDTAG[key]; if(e && heuteISO() >= e.termin && e.ergebnis) return e.ergebnis; return fallback; }
+function effektiveVals(key, fallback){
+  const e=LANDTAG[key];
+  if(e && heuteISO() >= e.termin){
+    if(e.ergebnis) return e.ergebnis;
+    if(e.fallback) return e.fallback;  /* Vorlaeufig oder Naechste Wahl noch nicht ausgezaehlt */
+  }
+  return fallback;
+}
 function landtagQuelle(key){
   const e=LANDTAG[key];
-  if(e && heuteISO() >= e.termin && e.ergebnis){
-    const endgueltig = e.feststellung && heuteISO() >= e.feststellung;
-    const label = (endgueltig ? "Amtliches Endergebnis" : "Vorläufiges Ergebnis") + " Landtagswahl " + e.termin.split("-").reverse().join(".");
-    return {label, quelle:e.quelle, datum:e.feststellung||e.termin, status: endgueltig ? "amtlich" : "vorlaeufig"};
+  if(e && heuteISO() >= e.termin){
+    const quellen = e.ergebnis ? e : (e.fallback ? {...e, ergebnis:e.fallback, quelle:e.fallback.quelle, feststellung:e.fallback.feststellung, name:e.fallback.name} : null);
+    if(quellen){
+      const endgueltig = quellen.feststellung && heuteISO() >= quellen.feststellung;
+      const nachwahlInfo = e.nachwahl ? " · " + e.nachwahl.status : "";
+      const label = (endgueltig ? "Amtliches Endergebnis" : "Vorläufiges Ergebnis") + " " + (quellen.name||e.name) + " " + quellen.termin.split("-").reverse().join(".") + nachwahlInfo;
+      return {label, quelle:quellen.quelle, datum:quellen.feststellung||quellen.termin, status: endgueltig ? "amtlich" : "vorlaeufig", nachwahl:e.nachwahl};
+    }
   }
   return {label:"Endgültiges Ergebnis Bundestagswahl 2025", quelle:"https://bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse.html", datum:"2025-02-23", status:"btw"};
 }
@@ -1205,7 +1278,7 @@ async function refreshLandtagLive(silent){
     if(hinweis){
       const stInfo=LANDTAG["st"];
       const standTxt=stInfo.stand ? " · Stand "+stInfo.stand : " · Stand 08.09.2026 15:06 Uhr (eingebaut)";
-      hinweis.innerHTML=`<b>Wahlauswertung:</b> Nach dem jeweiligen Wahl-Stichtag zeigt ein Land das <b>amtlich ausgezählte Ergebnis seiner Landtagswahl</b> (Quelle: Landeswahlleiterin). Vor dem Stichtag wird das <b>offizielle Zweitstimmen-Ergebnis der Bundestagswahl 2025</b> je Land angezeigt (Bundeswahlleiterin). Länder mit Stichtag 2026: <b>Baden-Württemberg (08.03.2026)</b>, <b>Rheinland-Pfalz (22.03.2026)</b>, <b>Sachsen-Anhalt (06.09.2026 – Auszählung live${standTxt})</b>. Parteien unter 5 % werden einheitlich <b>grau</b> dargestellt. Der Aktualisieren-Button lädt für die Sachsen-Anhalt-Auszählung live nach.`;
+      hinweis.innerHTML=`<b>Wahlauswertung:</b> Alle 16 Bundesländer mit aktuellen Landtag-Ergebnissen. Nachwahlen, Nachzählungen und Wahlwiederholungen werden priorisiert eingepflegt. Parteien unter 5 % grau. Letzter Stand: ${standTxt || 'keine Live-Daten'}.`;
     }
   }
 }
