@@ -370,10 +370,10 @@ footer a:hover{text-decoration:underline}
     <div class="sec-head">
       <span class="sec-num">04</span>
       <h2 class="sec-title">Die 16 Bundesländer im Detail</h2>
-      <span class="hint">Bundestag 2025 / Landtag amtlich nach Stichtag</span>
+      <span class="hint">Sonntagsfrage (grau) / Landtag amtlich nach Stichtag</span>
     </div>
     <div class="note-box inline" id="laenderHinweis">
-      <b>Wahlauswertung:</b> Nach dem jeweiligen Wahl-Stichtag zeigt ein Land das <b>amtlich ausgezählte Ergebnis seiner Landtagswahl</b> (Quelle: Landeswahlleiterin). Vor dem Stichtag wird das <b>offizielle Zweitstimmen-Ergebnis der Bundestagswahl 2025</b> je Land angezeigt (Bundeswahlleiterin). Alle 16 Bundesländer mit aktuellen Landtag-Ergebnissen. Parteien unter 5 % werden einheitlich <b>grau</b> dargestellt. Nachwahlen, Nachzählungen und Wahlwiederholungen werden priorisiert eingepflegt.
+      <b>Wahlauswertung:</b> Nach dem jeweiligen Wahl-Stichtag zeigt ein Land das <b>amtlich ausgezählte Ergebnis seiner Landtagswahl</b> (Quelle: Landeswahlleiterin). Vor dem Stichtag wird die <b>aktuelle Bundessontagsfrage</b> (Dawum, grau) als Platzhalter angezeigt, ohne aktuelle Umfrage das <b>letzte Ergebnis</b> (grau). Parteien unter 5 % werden einheitlich <b>grau</b> dargestellt. Nachwahlen, Nachzählungen und Wahlwiederholungen werden priorisiert eingepflegt.
     </div>
     <div class="states" id="statesGrid"></div>
   </section>
@@ -409,7 +409,7 @@ footer a:hover{text-decoration:underline}
       </ul>
     </div>
     <div class="disc">
-      <b>Wahlauswertung – Methodik:</b> Die „Sonntagsfrage“ (Bund, Abschnitt 01) ist eine Momentaufnahme, keine Prognose (±2–3 Pp.). <b>Länder &amp; Karte (02/04) arbeiten stichtagsbasiert:</b> Nach dem jeweiligen Landtags-Wahltermin (<b>BW 08.03.2026, RLP 22.03.2026, ST 06.09.2026</b>) wird automatisch das <b>amtlich ausgezählte Ergebnis</b> (Endgültig nach Feststellung bzw. vorläufig während der Auszählung) angezeigt; davor das endgültige Bundestagsergebnis 2025. Der Aktualisieren-Button lädt die Dawum-Sonntagsfrage (Bund) neu und versucht, für Sachsen-Anhalt die live ausgezählten Stimmen von der Landeswahlleiterin nachzuladen (CORS-bedingt mit Fallback auf eingebauten vorläufigen Stand 08.09.2026 15:06 Uhr: AfD 43,8 %, CDU 17,2 %, …). Sitzzahlen: Prognose rechnerisch nach Hare/Niemeyer, amtliche Ergebnisse fix. Koalitions-Simulator fiktiv. Nächste Bundestagswahl vorauss. 2029.
+      <b>Wahlauswertung – Methodik:</b> Die „Sonntagsfrage“ (Bund, Abschnitt 01) ist eine Momentaufnahme, keine Prognose (±2–3 Pp.). <b>Länder &amp; Karte (02/04) arbeiten stichtagsbasiert:</b> Nach dem jeweiligen Landtags-Wahltermin (<b>BW 08.03.2026, RLP 22.03.2026, ST 06.09.2026</b>) wird automatisch das <b>amtlich ausgezählte Ergebnis</b> (Endgültig nach Feststellung bzw. vorläufig während der Auszählung) angezeigt; davor die <b>aktuelle Bundessontagsfrage als Platzhalter (grau)</b>; ganz ohne aktuelle Umfrage das <b>letzte Ergebnis (grau)</b>. Der Aktualisieren-Button lädt die Dawum-Sonntagsfrage (Bund) neu und versucht, für Sachsen-Anhalt die live ausgezählten Stimmen von der Landeswahlleiterin nachzuladen (CORS-bedingt mit Fallback auf eingebauten vorläufigen Stand 08.09.2026 15:06 Uhr: AfD 43,8 %, CDU 17,2 %, …). Sitzzahlen: Prognose rechnerisch nach Hare/Niemeyer, amtliche Ergebnisse fix. Koalitions-Simulator fiktiv. Nächste Bundestagswahl vorauss. 2029.
     </div>
   </footer>
 
@@ -462,6 +462,8 @@ const NATIONAL = {
   prognose:{
     label:"Sonntagsfrage · Prognose 2026",
     sub:"Durchschnitt aller Institute · Stand 11.08.2026",
+    iso:"2026-08-11",
+    live:false,
     cdu:20.9, spd:12.1, gru:14.8, afd:28.1, lin:11.9, bsw:3.0, fdp:4.4, son:6.4
   },
   ergebnis:{
@@ -602,15 +604,40 @@ function heuteISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.g
 function landtagAktiv(key){ const e=LANDTAG[key]; return !!e && heuteISO() >= e.termin; }
 function effektiveVals(key, fallback){
   const e=LANDTAG[key];
-  if(e && heuteISO() >= e.termin){
+  /* 1) Frisch gewählt (<=45 Tage): amtliches Ergebnis, farbig */
+  if(stateIsCurrent(key) && e && heuteISO() >= e.termin){
     if(e.ergebnis) return e.ergebnis;
-    if(e.fallback) return e.fallback;  /* Vorlaeufig oder Naechste Wahl noch nicht ausgezaehlt */
+    if(e.fallback) return e.fallback;
   }
+  /* 2) Nur Sonntagsfrage: Bundes-Sonntagsfrage als Platzhalter, grau */
+  if(pollFrisch() && typeof NATIONAL!=="undefined" && NATIONAL.prognose) return NATIONAL.prognose;
+  /* 3) Keine Sonntagsfrage: letztes Ergebnis, grau */
+  return letztesErgebnis(key, fallback);
+}
+function pollStandISO(){
+  return (typeof NATIONAL!=="undefined" && NATIONAL.prognose && NATIONAL.prognose.iso) || "2026-08-11";
+}
+/* 3-Zustands-Logik: 1) frisch gewählt -> amtlich/farbig, 2) nur Sonntagsfrage
+   (live oder eingebettet <90 Tage) -> Umfrage/grau, 3) keine Sonntagsfrage
+   -> letztes Ergebnis/grau */
+function pollFrisch(){
+  try{
+    if(typeof NATIONAL==="undefined" || !NATIONAL.prognose) return false;
+    if(NATIONAL.prognose.live) return true;
+    const iso=NATIONAL.prognose.iso || "2026-08-11";
+    const alter=Math.floor((new Date()-new Date(iso+"T00:00:00"))/864e5);
+    return alter<=90;
+  }catch(e){ return false; }
+}
+function letztesErgebnis(key, fallback){
+  const e=LANDTAG[key];
+  if(e && e.ergebnis) return e.ergebnis;
+  if(e && e.fallback && typeof e.fallback.cdu!=="undefined") return e.fallback;
   return fallback;
 }
 function landtagQuelle(key){
   const e=LANDTAG[key];
-  if(e && heuteISO() >= e.termin){
+  if(stateIsCurrent(key) && e && heuteISO() >= e.termin){
     const quellen = e.ergebnis ? e : (e.fallback ? {...e, ergebnis:e.fallback, quelle:e.fallback.quelle, feststellung:e.fallback.feststellung, name:e.fallback.name} : null);
     if(quellen){
       const endgueltig = quellen.feststellung && heuteISO() >= quellen.feststellung;
@@ -618,6 +645,14 @@ function landtagQuelle(key){
       const label = (endgueltig ? "Amtliches Endergebnis" : "Vorläufiges Ergebnis") + " " + (quellen.name||e.name) + " " + quellen.termin.split("-").reverse().join(".") + nachwahlInfo;
       return {label, quelle:quellen.quelle, datum:quellen.feststellung||quellen.termin, status: endgueltig ? "amtlich" : "vorlaeufig", nachwahl:e.nachwahl};
     }
+  }
+  if(typeof NATIONAL!=="undefined" && NATIONAL.prognose && pollFrisch()){
+    const iso=pollStandISO();
+    return {label:`Sonntagsfrage (Bund) · Stand ${fmtDateShort(iso)}`, quelle:"https://dawum.de", datum:iso, status:"poll", nachwahl:null};
+  }
+  const last=letztesErgebnis(key, null);
+  if(last){
+    return {label:"Letztes Ergebnis (keine aktuelle Sonntagsfrage)", quelle:"https://bundeswahlleiterin.de", datum:"", status:"alt", nachwahl:null};
   }
   return {label:"Endgültiges Ergebnis Bundestagswahl 2025", quelle:"https://bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse.html", datum:"2025-02-23", status:"btw"};
 }
@@ -995,13 +1030,13 @@ function showMapDetail(stKey){
       <span class="vl">${fmt(vEff[k])}&nbsp;%</span>
       <span class="mbar" style="width:44px"><i style="--c:${col};width:${Math.round(vEff[k]/maxOf(vEff)*100)}%"></i></span></div>`;
   }).join("");
-  const quelleLabel = q.status==="amtlich" ? "· Landtag" : q.status==="vorlaeufig" ? "· Landtag vorläufig" : "· Bundestag";
+  const quelleLabel = q.status==="amtlich" ? "· Landtag" : q.status==="vorlaeufig" ? "· Landtag vorläufig" : q.status==="poll" ? "· Sonntagsfrage" : q.status==="alt" ? "· letzte Wahl" : "· Bundestag";
   mapDetail.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
       <span style="font-weight:800;font-size:18px">${st.name}</span>
       <span class="badge" style="background:${tCol}">${PARTY[t.k].label} ${fmt(t.v)}&nbsp;%</span>
     </div>
     <div class="dlist" style="padding-top:0">${rows}</div>
-    <div style="margin-top:12px;font-size:12.5px;color:var(--muted)">${effSeats} Sitze ${quelleLabel} · ${stateSeats(vEff,effSeats)[t.k]} für ${PARTY[t.k].label}</div>
+    <div style="margin-top:12px;font-size:12.5px;color:var(--muted)">${effSeats} Sitze${q.status==="poll"?" (Projektion)":""} ${quelleLabel} · ${stateSeats(vEff,effSeats)[t.k]} für ${PARTY[t.k].label}</div>
     <div style="margin-top:8px;font-size:11px;color:var(--faint)">${q.label} · <a href="${q.quelle}" target="_blank" rel="noopener">Quelle</a></div>`;
   paintMap();
   const sel=document.getElementById("coalSelect");
@@ -1103,9 +1138,11 @@ function coalDataset(){
   const vEff=effektiveVals(st.key, st.vals);
   const q=landtagQuelle(st.key);
   const sitzeEff = landtagAktiv(st.key) ? LANDTAG[st.key].sitze : st.seats;
-  return {name:st.name,dataset:q.label + " · " + (q.status==="btw" ? "Zweitstimmen" : "Zweitstimmen Landtag"),vals:vEff,
+  const isPoll = q.status==="poll";
+  const isAlt = q.status==="alt";
+  return {name:st.name,dataset:q.label + " · " + (q.status==="btw" ? "Zweitstimmen" : isPoll ? "Bundestrend als Platzhalter" : isAlt ? "grau: keine aktuelle Umfrage" : "Zweitstimmen Landtag"),vals:vEff,
     seats:stateSeats(vEff,sitzeEff),total:sitzeEff,
-    note: q.status==="btw" ? "Sitze dieses Landes im Bundestag (amtliche Verteilung) nach 5%-Hürde." : q.label + " – Sitzverteilung Landtag nach 5%-Hürde."};
+    note: q.status==="btw" ? "Sitze dieses Landes im Bundestag (amtliche Verteilung) nach 5%-Hürde." : isPoll ? "Sitzprojektion aus Bundessontagsfrage (Hare/Niemeyer) – keine Landesprognose." : isAlt ? "Altes Ergebnis – mangels aktueller Sonntagsfrage grau dargestellt." : q.label + " – Sitzverteilung Landtag nach 5%-Hürde."};
 }
 
 function initCoal(){
@@ -1115,7 +1152,8 @@ function initCoal(){
   STATES.forEach(st=>{
     const opt=document.createElement("option");
     const sitzeEff = landtagAktiv(st.key) ? LANDTAG[st.key].sitze : st.seats;
-    const zusatz = landtagAktiv(st.key) ? " · Landtag" : "";
+    const qs = landtagQuelle(st.key).status;
+    const zusatz = qs==="amtlich"||qs==="vorlaeufig" ? " · Landtag" : qs==="poll" ? " · Umfrage" : qs==="alt" ? " · letzte Wahl" : "";
     opt.value=st.key;opt.textContent=st.name+" ("+sitzeEff+" Sitze"+zusatz+")";
     coalSel.appendChild(opt);
   });
@@ -1150,6 +1188,19 @@ function initCoal(){
 function paintMapSel(key){
   selectedState=key;
   paintMap();
+}
+
+function updateCoalLabels(){
+  if(typeof coalSel==="undefined"||!coalSel) return;
+  [...coalSel.options].forEach(opt=>{
+    if(!opt.value||opt.value==="de") return;
+    const st=STATES.find(s=>s.key===opt.value);
+    if(!st) return;
+    const sitzeEff = landtagAktiv(opt.value) ? LANDTAG[opt.value].sitze : st.seats;
+    const qs = landtagQuelle(opt.value).status;
+    const zusatz = qs==="amtlich"||qs==="vorlaeufig" ? " · Landtag" : qs==="poll" ? " · Umfrage" : qs==="alt" ? " · letzte Wahl" : "";
+    opt.textContent=st.name+" ("+sitzeEff+" Sitze"+zusatz+")";
+  });
 }
 
 function renderCoalChips(){
@@ -1246,7 +1297,7 @@ function buildStates(){
     const entries=ORDER.map(k=>({k,v:vEff[k]}));
     const top=entries.reduce((a,b)=>b.v>a.v?b:a);
     const topCol=stateColor(st.key,top.k,top.v);
-    const quellKurz = q.status==="amtlich" ? "Landtag amtlich" : q.status==="vorlaeufig" ? "Landtag vorläufig" : "Bundestag 2025";
+    const quellKurz = q.status==="amtlich" ? "Landtag amtlich" : q.status==="vorlaeufig" ? "Landtag vorläufig" : q.status==="poll" ? "Sonntagsfrage" : q.status==="alt" ? "Letzte Wahl" : "Bundestag 2025";
     card.innerHTML=`
       <div class="card-head">
         <h3>${st.name}</h3>
@@ -1323,8 +1374,19 @@ function wahlAktiv(){
   return WAHLKALENDER.some(w=>{const t=tageBisWahl(w.key); return t>=0 && t<=28;});
 }
 
+function renderLaender(){
+  /* Graue Länder hängen an der Bundessontagsfrage (Zustand 2) bzw. am
+     letzten Ergebnis (Zustand 3) -> mit neu rendern */
+  buildStates();
+  paintMap();
+  if(typeof selectedState!=="undefined" && selectedState) showMapDetail(selectedState);
+  renderCoalChips(); updateCoal(); updateCoalLabels();
+}
+
 function applyPrognose(avg,iso,institutes){
   ORDER.forEach(k=>{NATIONAL.prognose[k]=avg[k]!==undefined?avg[k]:0;});
+  NATIONAL.prognose.iso=iso;
+  NATIONAL.prognose.live=true;
   NATIONAL.prognose.sub=`Dawum-API · Durchschnitt aller Institute · Stand ${fmtDateShort(iso)}`;
   const now=new Date();
   updateWahlKalenderChip();
@@ -1353,6 +1415,7 @@ function applyPrognose(avg,iso,institutes){
   if(webglOk&&pieGroup){buildPie();}
   else{buildFallback();}
   updateCoal();
+  renderLaender();
   refreshBtn.title=`Zuletzt aktualisiert: ${now.toLocaleString("de-DE")} · ${institutes} Institute (Dawum-API)`;
 }
 
@@ -1436,6 +1499,8 @@ async function refreshFromDawum(silent){
       refreshLabel.textContent="✓ Aktualisiert";
     }
   }catch(e){
+    NATIONAL.prognose.live=false;
+    renderLaender();
     if(!silent){
       refreshBtn.classList.add("err");
       refreshLabel.textContent="Fehler · Daten unverändert";
