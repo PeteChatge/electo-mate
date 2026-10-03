@@ -409,7 +409,7 @@ footer a:hover{text-decoration:underline}
       </ul>
     </div>
     <div class="disc">
-      <b>Wahlauswertung – Methodik:</b> Die „Sonntagsfrage“ (Bund, Abschnitt 01) ist eine Momentaufnahme, keine Prognose (±2–3 Pp.). <b>Länder &amp; Karte (02/04) arbeiten stichtagsbasiert:</b> Nach dem jeweiligen Landtags-Wahltermin (<b>BW 08.03.2026, RLP 22.03.2026, ST 06.09.2026</b>) wird automatisch das <b>amtlich ausgezählte Ergebnis</b> (Endgültig nach Feststellung bzw. vorläufig während der Auszählung) angezeigt; davor die <b>aktuelle Bundessontagsfrage als Platzhalter (grau)</b>; ganz ohne aktuelle Umfrage das <b>letzte Ergebnis (grau)</b>. Der Aktualisieren-Button lädt die Dawum-Sonntagsfrage (Bund) neu und versucht, für Sachsen-Anhalt die live ausgezählten Stimmen von der Landeswahlleiterin nachzuladen (CORS-bedingt mit Fallback auf eingebauten vorläufigen Stand 08.09.2026 15:06 Uhr: AfD 43,8 %, CDU 17,2 %, …). Sitzzahlen: Prognose rechnerisch nach Hare/Niemeyer, amtliche Ergebnisse fix. Koalitions-Simulator fiktiv. Nächste Bundestagswahl vorauss. 2029.
+      <b>Wahlauswertung – Methodik:</b> Die „Sonntagsfrage“ (Bund, Abschnitt 01) ist eine Momentaufnahme, keine Prognose (±2–3 Pp.). <b>Länder &amp; Karte (02/04) arbeiten stichtagsbasiert:</b> Nach dem jeweiligen Landtags-Wahltermin (<b>BW 08.03.2026, RLP 22.03.2026, ST 06.09.2026</b>) wird automatisch das <b>amtlich ausgezählte Ergebnis</b> (Endgültig nach Feststellung bzw. vorläufig während der Auszählung) angezeigt; davor die <b>aktuelle Bundessontagsfrage als Platzhalter (grau)</b>; ganz ohne aktuelle Umfrage das <b>letzte Ergebnis (grau)</b>. Der Aktualisieren-Button lädt die Dawum-Sonntagsfrage (Bund) neu und versucht, für Sachsen-Anhalt die live ausgezählten Stimmen von der Landeswahlleiterin nachzuladen (CORS-bedingt mit Fallback auf eingebautes endgültiges Ergebnis 22.09.2026: AfD 43,8 %, CDU 17,2 %, …). Sitzzahlen: Prognose rechnerisch nach Hare/Niemeyer, amtliche Ergebnisse fix. Koalitions-Simulator fiktiv. Nächste Bundestagswahl vorauss. 2029.
     </div>
   </footer>
 
@@ -536,27 +536,28 @@ const LANDTAG = {
       quelle:"https://www.wahlen.rlp.de/landtagswahl/ergebnisse",
       liveUrl:null, nachwahl:null,
       ergebnis:{cdu:25.9, spd:31.0, gru:7.9, afd:19.5, lin:4.2, bsw:3.8, fdp:2.1, son:5.6}},
-  st:{name:"Sachsen-Anhalt", termin:"2026-09-06", feststellung:"2026-09-19", sitze:83,
+  st:{name:"Sachsen-Anhalt", termin:"2026-09-06", feststellung:"2026-09-22", sitze:83,
       quelle:"https://wahlergebnisse.sachsen-anhalt.de/wahlen/lt26/erg_land.html",
       liveUrl:"https://wahlergebnisse.sachsen-anhalt.de/wahlen/lt26/erg_land.html",
       nachwahl:null,
       ergebnis:{cdu:17.2, spd:9.3, gru:8.9, afd:43.8, lin:8.6, bsw:5.3, fdp:2.6, son:4.3}},
   /* --- HEUTE: 20.09.2026 --- */
   be:{name:"Berlin", termin:"2026-09-20", feststellung:"2026-10-10", sitze:147,
-      quelle:"https://www.rbb24.de/politik/berlin-wahl-2026/beitraege/berlin-wahl-agh-bvv-stimmen-ergebnis-reaktionen-liveticker.html",
+      quelle:"https://www.berlin.de/wahlen/wahlen/berliner-wahlen-2026",
       liveUrl:"https://www.wahlen-berlin.de/wahlen/Be2026/AFSPRAES/agh/index.html",
-      nachwahl:{status:"Wiederholungswahl (nach 2021-Ungueltig)", quelle:"https://www.berlin.de/wahlen/"},
-      /* 18:28-Hochrechnung (infratest dimap/ARD via rbb24) */
-      ergebnis:{cdu:20.0, spd:12.0, gru:15.0, afd:15.7, lin:24.8, bsw:5.0, fdp:2.4, son:5.1},
+      nachwahl:null,
+      /* Vorlaeufiges Ergebnis Landeswahlleiter Berlin, Stand 21.09.2026 (tagesschau/dawum) */
+      ergebnis:{cdu:18.8, spd:12.1, gru:14.3, afd:16.3, lin:25.7, bsw:4.7, fdp:2.5, son:5.6},
       /* Zwischenstand: gueltiges Ergebnis der letzten gueltigen Wahl (2023 Wiederholung) */
-      fallback:{cdu:28.2, spd:18.4, gru:18.4, afd:9.1, lin:12.8, bsw:0, fdp:4.6, son:8.5,
+      fallback:{cdu:28.2, spd:18.4, gru:18.4, afd:9.1, lin:12.2, bsw:0, fdp:4.6, son:9.1,
                 quelle:"https://www.wahlen-berlin.de/wahlen/Be2023/AFSPRAES/agh/index.html",
                 feststellung:"2023-02-27", name:"Berlin (2023 Wdh.)"}},
-  mv:{name:"Mecklenburg-Vorp.", termin:"2026-09-20", feststellung:"2026-10-14", sitze:79,
-      quelle:"https://www.ndr.de/nachrichten/mecklenburg-vorpommern/landtagswahl/liveticker-wahl-mv-afd-laut-prognose-knapp-vor-spd,mvwahl-liveticker-100.html",
+  mv:{name:"Mecklenburg-Vorp.", termin:"2026-09-20", feststellung:"2026-10-12", sitze:71,
+      quelle:"https://www.landtag-mv.de/aktuelles/artikel/landtagswahl-2026-vorlaeufiges-amtliches-endergebnis",
       liveUrl:"https://wahlen.mvnet.de/dateien/ergebnisse.2026/landtagswahl/html/l_abs_zweit.html",
       nachwahl:null,
-      ergebnis:{cdu:5.5, spd:35.5, gru:5.5, afd:37.0, lin:7.5, bsw:5.0, fdp:0, son:4.0}},
+      /* Vorlaeufiges amtliches Endergebnis Landeswahlleitung MV, 21.09.2026 */
+      ergebnis:{cdu:4.9, spd:35.5, gru:5.7, afd:38.2, lin:6.5, bsw:4.8, fdp:1.0, son:3.4}},
   /* --- bereits abgeschlossen --- */
   by:{name:"Bayern", termin:"2023-10-08", feststellung:"2023-10-24", sitze:203,
       quelle:"https://www.statistik.bayern.de/mam/wahlen/landtagswahlen/",
@@ -1458,7 +1459,7 @@ async function refreshLandtagLive(silent){
     const hinweis=document.getElementById("laenderHinweis");
     if(hinweis){
       const stInfo=LANDTAG["st"];
-      const standTxt=stInfo.stand ? " · Stand "+stInfo.stand : " · Stand 08.09.2026 15:06 Uhr (eingebaut)";
+      const standTxt=stInfo.stand ? " · Stand "+stInfo.stand : " · Stand 22.09.2026 endgültig (eingebaut)";
       hinweis.innerHTML=`<b>Wahlauswertung:</b> Alle 16 Bundesländer mit aktuellen Landtag-Ergebnissen. Nachwahlen, Nachzählungen und Wahlwiederholungen werden priorisiert eingepflegt. Parteien unter 5 % grau. Letzter Stand: ${standTxt || 'keine Live-Daten'}.`;
     }
   }
